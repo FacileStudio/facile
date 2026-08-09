@@ -71,20 +71,28 @@ func printNames(entries []entry) {
 	}
 }
 
+// printTable pads on the plain text before colorizing, since ANSI escapes have
+// width in a format verb but none on screen.
 func printTable(entries []entry) {
-	width := 0
+	nameWidth, stateWidth := 0, 0
 	for _, e := range entries {
-		if len(e.Name) > width {
-			width = len(e.Name)
-		}
+		nameWidth = max(nameWidth, len(e.Name))
+		stateWidth = max(stateWidth, len(stateOf(e)))
 	}
 	for _, e := range entries {
-		state := ui.Dim("not installed")
-		if e.Installed {
-			state = e.Version
+		state := fmt.Sprintf("%-*s", stateWidth, stateOf(e))
+		if !e.Installed {
+			state = ui.Dim(state)
 		}
-		fmt.Printf("%-*s  %-10s  %s\n", width, e.Name, state, ui.Dim(e.Summary))
+		fmt.Printf("%-*s  %s  %s\n", nameWidth, e.Name, state, ui.Dim(e.Summary))
 	}
+}
+
+func stateOf(e entry) string {
+	if e.Installed {
+		return e.Version
+	}
+	return "not installed"
 }
 
 // versionOf keeps the semver out of a "<bin> <semver>" line.
