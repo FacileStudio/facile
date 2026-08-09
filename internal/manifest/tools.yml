@@ -1,0 +1,245 @@
+# The Facile Studio tool catalog.
+#
+# `facile` embeds this file at build time and refreshes it from its raw URL on
+# main at runtime, so adding a tenth tool never requires anybody to reinstall
+# facile. This copy is canonical; there is no second one to keep in sync.
+#
+# The install fields mirror the config block of the per-repo install.sh by
+# design: the two must agree, and identical names make a mismatch visible.
+#
+# The auth block is transcribed from each CLI's own credential READ path. It is
+# not a preference — get one character wrong and facile writes a token the tool
+# will never find. Path templates: ~ is $HOME, ${xdgConfig} is $XDG_CONFIG_HOME
+# or ~/.config, ${userConfig} is the platform-native config dir (which on macOS
+# is ~/Library/Application Support, and is what Rust's dirs::config_dir returns).
+
+version: 1
+
+tools:
+  - name: opus
+    summary: Project management
+    repo: FacileStudio/opus-cli
+    branch: main
+    bin: opus
+    build: rust
+    srcSubdir: .
+    asset: opus
+    skill: opus
+    auth:
+      kind: token
+      defaultServerUrl: http://localhost:1337
+      transport: bearer
+      store:
+        kind: file
+        path: ~/.opus.yml
+        format: yaml
+        tokenField: api_key
+        urlField: api_url
+        mode: 0o600
+        preserve: true
+      note: >-
+        Opus mints a static API key from Settings > Account > Developer. It is
+        the only suite tool with no login endpoint to drive.
+
+  - name: sablier
+    summary: Time tracking
+    repo: FacileStudio/sablier-cli
+    branch: main
+    bin: sablier
+    build: rust
+    srcSubdir: .
+    asset: sablier
+    skill: sablier
+    auth:
+      kind: sso
+      apiSuffix: /api
+      transport: bearer
+      sso:
+        startPath: /auth/oidc
+        portParam: port
+        extraParams: flow=cli
+        callbackWith: code
+        exchangePath: /auth/oidc/exchange
+        requireState: false
+      store:
+        kind: file
+        path: ~/.sablier.yml
+        format: yaml
+        tokenField: token
+        urlField: server_url
+        mode: 0o600
+        preserve: true
+
+  - name: nuage
+    summary: Cloud storage sync
+    repo: FacileStudio/nuage-cli
+    branch: main
+    bin: nuage
+    build: rust
+    srcSubdir: .
+    asset: nuage
+    skill: nuage
+    auth:
+      kind: token
+      transport: bearer
+      store:
+        kind: file
+        path: ~/.nuage.yml
+        format: yaml
+        tokenField: token
+        urlField: server_url
+        mode: 0o600
+        preserve: true
+      note: >-
+        The config file also holds sync_dir, poll_interval, ignore_patterns and
+        selective_sync. Overwriting it wholesale silently resets the user's sync
+        directory, so this store is read-modify-write.
+
+  - name: casier
+    summary: Secrets and environment variables
+    repo: FacileStudio/casier-cli
+    branch: main
+    bin: casier
+    build: rust
+    srcSubdir: .
+    asset: casier
+    skill: casier
+    auth:
+      kind: sso
+      defaultServerUrl: https://casier.facile.studio/api
+      apiSuffix: /api
+      discoveryPath: /auth/config
+      identityPath: /auth/me
+      transport: bearer
+      envToken: CASIER_TOKEN
+      envUrl: CASIER_SERVER_URL
+      sso:
+        startPath: /auth/oidc
+        portParam: cli_port
+        stateParam: cli_state
+        callbackWith: token
+        requireState: true
+      password:
+        path: /auth/login
+        withEmail: true
+        tokenField: token
+      store:
+        kind: keychain
+        keychainService: casier
+        keychainAccount: serverUrl
+        path: ${userConfig}/casier/config.toml
+        format: toml
+        urlField: server_url
+        mode: 0o644
+
+  - name: capsule
+    summary: End-to-end encrypted paste
+    repo: FacileStudio/capsule-cli
+    branch: main
+    bin: capsule
+    build: go
+    srcSubdir: .
+    asset: capsule-cli
+    goVersionVar: github.com/FacileStudio/capsule-cli/cmd.version
+    auth:
+      kind: none
+      note: >-
+        Capsule is zero-knowledge. There is no account, only a per-capsule
+        delete token printed when you seal one.
+
+  - name: antenne
+    summary: Alert log and delivery targets
+    repo: FacileStudio/antenne-cli
+    branch: main
+    bin: antenne
+    build: go
+    srcSubdir: .
+    asset: antenne-cli
+    goVersionVar: github.com/FacileStudio/antenne-cli/cmd.version
+    auth:
+      kind: password
+      defaultServerUrl: http://localhost:9090
+      discoveryPath: /api/session/public
+      transport: cookie
+      cookieName: antenne_session
+      envUrl: ANTENNE_URL
+      password:
+        path: /api/login
+        withEmail: false
+      store:
+        kind: file
+        path: ${xdgConfig}/antenne/config.json
+        format: json
+        tokenField: token
+        urlField: url
+        mode: 0o600
+        dirMode: 0o700
+        preserve: true
+      note: >-
+        Antenne authenticates a whole instance with one password and answers
+        with a session cookie, not a bearer token. The stored value is the
+        antenne_session cookie value.
+
+  - name: jardin
+    summary: Shared agent memory
+    repo: FacileStudio/Jardin
+    branch: main
+    bin: jardin
+    build: go
+    srcSubdir: .
+    asset: Jardin
+    goVersionVar: github.com/FacileStudio/Jardin/cmd.version
+    auth:
+      kind: device
+      transport: bearer
+      device:
+        startPath: /api/auth/device/start
+        pollPath: /api/auth/device/poll
+      password:
+        path: /api/auth/login
+        withEmail: false
+        tokenField: token
+      store:
+        kind: file
+        path: ~/.jardin.yml
+        format: yaml
+        tokenField: token
+        urlField: url
+        mode: 0o600
+        preserve: true
+        extra:
+          - machine
+      note: >-
+        Jardin also keeps space, usage_token, rule_order and agents in the same
+        file, so this store is read-modify-write. The separate usage token is
+        an Anthropic credential and is none of facile's business.
+
+  - name: spore
+    summary: Monorepo package manager
+    repo: FacileStudio/Spore
+    branch: main
+    bin: spore
+    build: rust
+    srcSubdir: apps/cli
+    asset: spore
+    auth:
+      kind: none
+      envToken: SPORE_TOKEN
+      envUrl: SPORE_SPACE_URL
+      note: >-
+        Spore reads SPORE_TOKEN from the environment and persists nothing, so
+        there is no store for facile to write. Export it in your shell.
+
+  - name: ardoise
+    summary: Invoice and contract PDFs
+    repo: FacileStudio/ardoise-cli
+    branch: master
+    bin: ardoise
+    build: bun
+    srcSubdir: .
+    asset: ""
+    requires:
+      - typst
+    auth:
+      kind: none
+      note: Ardoise runs entirely offline and has no account.
