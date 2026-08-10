@@ -57,11 +57,12 @@ tools:
       sso:
         startPath: /auth/oidc
         portParam: port
+        stateParam: cli_state
         extraParams: flow=cli
         callbackWith: code
         callbackPath: /
         exchangePath: /auth/oidc/exchange
-        requireState: false
+        requireState: true
       store:
         kind: file
         path: ~/.sablier.yml
