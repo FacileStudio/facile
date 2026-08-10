@@ -40,6 +40,10 @@ func Hint(format string, a ...any) {
 	fmt.Fprintf(os.Stdout, "  %s\n", hintStyle.Sprintf(format, a...))
 }
 
+// Prompt asks for input on stderr with no trailing newline, keeping stdout
+// clean for the data a caller may be piping.
+func Prompt(format string, a ...any) { fmt.Fprintf(os.Stderr, format, a...) }
+
 // Dim renders text in the dim style without printing it.
 func Dim(s string) string { return dimStyle.Sprint(s) }
 
