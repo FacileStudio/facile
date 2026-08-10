@@ -267,7 +267,7 @@ tools:
   - name: ardoise
     summary: Invoice and contract PDFs
     repo: FacileStudio/ardoise-cli
-    branch: master
+    branch: main
     bin: ardoise
     build: bun
     srcSubdir: .
