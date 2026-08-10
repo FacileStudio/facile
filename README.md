@@ -7,10 +7,15 @@ current, and sign in once.
 curl -fsSL https://get.facile.studio | bash
 ```
 
-Installs to `~/.local/bin`. Pass `--bin-dir <dir>` to change that, `--source` to
-build from source. `get.facile.studio` proxies this repo's `install.sh` rather
-than holding a copy, so it is never out of date; the raw GitHub URL keeps
-working as a fallback.
+Installs to `~/.local/bin` and puts it on your `PATH` — zsh, bash and fish,
+whichever the machine has, guarded so re-running changes nothing. Pass
+`--bin-dir <dir>` to install elsewhere, `--no-path` to leave your shell config
+alone, `--source` to build from source. `get.facile.studio` proxies this repo's
+`install.sh` rather than holding a copy, so it is never out of date; the raw
+GitHub URL keeps working as a fallback.
+
+The terminal that ran the installer still has the old `PATH` — open a new one,
+or `export PATH="$HOME/.local/bin:$PATH"` once.
 
 Then:
 
@@ -110,9 +115,14 @@ there is one implementation and nothing left to drift.
 - **Verify by running.** facile reports the version the installed binary itself
   printed. An installer that claims success without executing the artifact is
   lying.
-- **Warn, never fix, on PATH.** If `~/.local/bin` is missing from `PATH`, or a
-  different binary of the same name comes first, facile says so and prints the
-  line to add. It does not edit your shell configuration.
+- **The bootstrap fixes PATH; `facile` itself only warns.** `install.sh` is a
+  first run, and a bin directory nothing can reach is not an install — so it
+  writes a guarded prepend to the shells the machine has (zsh, bash, fish) and
+  names each file it touched. `facile install` is the repeat operation, into a
+  directory you already chose, so it says what is wrong and prints the line
+  rather than editing your config behind you. Both report when a different
+  binary of the same name comes first, which is the usual cause of "I updated
+  it and nothing changed".
 - **No state file.** What is installed is read off disk by running each binary,
   so facile's idea of your machine cannot drift from your machine.
 - **The latest tag is resolved without the GitHub API**, by following the
