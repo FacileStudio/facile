@@ -11,12 +11,23 @@ import (
 	"github.com/FacileStudio/facile/internal/ui"
 )
 
+var flagCatalogOnly bool
+
 var updateCmd = &cobra.Command{
 	Use:   "update [tool...]",
 	Short: "Update installed Facile tools",
 	Long: "Reinstall tools at their latest release.\n\n" +
 		"With no arguments it updates everything already installed.",
 	RunE: func(_ *cobra.Command, args []string) error {
+		if flagCatalogOnly {
+			m, err := manifest.Refresh(store.CatalogPath())
+			if err != nil {
+				return fmt.Errorf("cannot reach the tool catalog — %s", err)
+			}
+			ui.Success("Catalog refreshed, %d tools", len(m.Tools))
+			return nil
+		}
+
 		tools, err := updateTargets(args)
 		if err != nil {
 			return err
@@ -34,6 +45,7 @@ var updateCmd = &cobra.Command{
 
 func init() {
 	updateCmd.Flags().BoolVar(&flagAll, "all", false, "Update every tool in the catalog")
+	updateCmd.Flags().BoolVar(&flagCatalogOnly, "catalog", false, "Refresh the tool catalog and change nothing else")
 	updateCmd.Flags().BoolVar(&flagNoSkill, "no-skill", false, "Skip AI agent skill registration")
 	rootCmd.AddCommand(updateCmd)
 }

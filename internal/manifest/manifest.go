@@ -48,7 +48,17 @@ type Manifest struct {
 // Load returns the catalog, preferring a fresh remote copy and falling back to
 // the copy embedded at build time. A network failure is never fatal: an
 // installer that cannot install because GitHub is slow would be a poor trade.
+//
+// FACILE_CATALOG points at a local file and wins over everything, which is the
+// only way to try a catalog edit without publishing it first.
 func Load(cachePath string) *Manifest {
+	if local := os.Getenv("FACILE_CATALOG"); local != "" {
+		if raw, err := os.ReadFile(local); err == nil {
+			if m, err := parse(raw); err == nil {
+				return m
+			}
+		}
+	}
 	if raw, err := os.ReadFile(cachePath); err == nil && fresh(cachePath) {
 		if m, err := parse(raw); err == nil {
 			return m
@@ -124,9 +134,24 @@ func fetch() ([]byte, error) {
 	return io.ReadAll(io.LimitReader(resp.Body, fetchLimit))
 }
 
+// fresh keeps a cached catalog for a day, but never past an upgrade of facile
+// itself. A new binary carries a new embedded catalog, and serving a cache
+// written by the old one would hide exactly the change the user just installed
+// — a tool that gained a login flow would keep asking for a pasted token.
 func fresh(path string) bool {
 	info, err := os.Stat(path)
-	return err == nil && time.Since(info.ModTime()) < cacheMaxAge
+	if err != nil || time.Since(info.ModTime()) >= cacheMaxAge {
+		return false
+	}
+	self, err := os.Executable()
+	if err != nil {
+		return true
+	}
+	binary, err := os.Stat(self)
+	if err != nil {
+		return true
+	}
+	return !binary.ModTime().After(info.ModTime())
 }
 
 func writeCache(path string, raw []byte) {
