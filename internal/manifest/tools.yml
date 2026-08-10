@@ -54,6 +54,7 @@ tools:
     auth:
       kind: sso
       apiSuffix: /api
+      discoveryPath: /auth/config
       transport: bearer
       sso:
         startPath: /auth/oidc
@@ -83,9 +84,22 @@ tools:
     asset: nuage
     skill: nuage
     auth:
-      kind: token
+      kind: sso
+      apiSuffix: /api
+      discoveryPath: /auth/config
       tokenPath: /settings/api
       transport: bearer
+      envToken: NUAGE_TOKEN
+      envUrl: NUAGE_SERVER_URL
+      sso:
+        startPath: /auth/oidc
+        portParam: port
+        stateParam: cli_state
+        extraParams: flow=cli
+        callbackWith: code
+        callbackPath: /
+        exchangePath: /auth/oidc/exchange
+        requireState: true
       store:
         kind: file
         path: ~/.nuage.yml
@@ -97,7 +111,8 @@ tools:
       note: >-
         The config file also holds sync_dir, poll_interval, ignore_patterns and
         selective_sync. Overwriting it wholesale silently resets the user's sync
-        directory, so this store is read-modify-write.
+        directory, so this store is read-modify-write. tokenPath is the fallback
+        for a headless box: nuage-cli keeps a --token paste path for one.
 
   - name: casier
     summary: Secrets and environment variables
