@@ -210,8 +210,20 @@ tools:
     asset: Mycelium
     goVersionVar: github.com/FacileStudio/Mycelium/cmd.version
     auth:
-      kind: device
+      kind: sso
+      discoveryPath: /api/auth/config
       transport: bearer
+      envToken: MYCELIUM_TOKEN
+      envUrl: MYCELIUM_URL
+      sso:
+        startPath: /api/auth/oidc
+        portParam: port
+        stateParam: cli_state
+        extraParams: flow=cli
+        callbackWith: code
+        callbackPath: /
+        exchangePath: /api/auth/oidc/exchange
+        requireState: true
       device:
         startPath: /api/auth/device/start
         pollPath: /api/auth/device/poll
@@ -232,7 +244,9 @@ tools:
       note: >-
         Mycelium also keeps space, usage_token, rule_order and agents in the same
         file, so this store is read-modify-write. The separate usage token is
-        an Anthropic credential and is none of facile's business.
+        an Anthropic credential and is none of facile's business. The device
+        flow stays for a headless machine with no browser to open, and Mycelium
+        advertises it as device_enabled on its discovery endpoint.
 
   - name: spore
     summary: Monorepo package manager
