@@ -1,5 +1,7 @@
 package manifest
 
+import "strings"
+
 // Auth describes how a tool authenticates and, crucially, where it expects to
 // find its credential afterwards. `facile login` drives the flow and then writes
 // the result into that exact location, so the tool itself needs no change to
@@ -53,6 +55,11 @@ type SSOFlow struct {
 	CallbackWith string `yaml:"callbackWith"`
 	ExchangePath string `yaml:"exchangePath"`
 
+	// CallbackPath is the loopback path the server redirects to, and it is not
+	// the same everywhere: casier redirects to /callback, porte — and so
+	// sablier — redirects to /. Empty means /callback.
+	CallbackPath string `yaml:"callbackPath"`
+
 	// RequireState is false only where the server does not echo the nonce back
 	// yet. It is a defect to be fixed server-side, never a setting to prefer.
 	RequireState bool `yaml:"requireState"`
@@ -97,4 +104,23 @@ type Store struct {
 // NeedsLogin reports whether `facile login` can do anything for this tool.
 func (t Tool) NeedsLogin() bool {
 	return t.Auth != nil && t.Auth.Kind != "" && t.Auth.Kind != "none"
+}
+
+// Note is why a tool cannot be logged into, or what is unusual about how it
+// stores its credential. Empty when there is nothing to say.
+func (t Tool) Note() string {
+	if t.Auth == nil {
+		return ""
+	}
+	return strings.TrimSpace(t.Auth.Note)
+}
+
+// EnvToken is the environment variable that overrides the stored credential.
+// It matters at logout: a variable still set keeps working, and the user would
+// otherwise think the logout failed.
+func (t Tool) EnvToken() string {
+	if t.Auth == nil {
+		return ""
+	}
+	return t.Auth.EnvToken
 }

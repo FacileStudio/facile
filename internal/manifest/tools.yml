@@ -59,6 +59,7 @@ tools:
         portParam: port
         extraParams: flow=cli
         callbackWith: code
+        callbackPath: /
         exchangePath: /auth/oidc/exchange
         requireState: false
       store:
@@ -118,6 +119,7 @@ tools:
         portParam: cli_port
         stateParam: cli_state
         callbackWith: token
+        callbackPath: /callback
         requireState: true
       password:
         path: /auth/login
