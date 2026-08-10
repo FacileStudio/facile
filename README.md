@@ -4,11 +4,13 @@ One installer for the whole Facile Studio suite. Pick your tools, keep them
 current, and sign in once.
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/FacileStudio/facile/main/install.sh | bash
+curl -fsSL https://get.facile.studio | bash
 ```
 
 Installs to `~/.local/bin`. Pass `--bin-dir <dir>` to change that, `--source` to
-build from source.
+build from source. `get.facile.studio` proxies this repo's `install.sh` rather
+than holding a copy, so it is never out of date; the raw GitHub URL keeps
+working as a fallback.
 
 Then:
 
