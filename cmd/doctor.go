@@ -71,20 +71,26 @@ func checkTools(dir string) int {
 	return problems
 }
 
+// checkShadow resolves both sides before comparing. Resolving only the one
+// found on PATH reports every install under a symlinked directory as its own
+// impostor, and on macOS /tmp is such a directory.
 func checkShadow(tool manifest.Tool, dir string) int {
 	found, err := exec.LookPath(tool.Bin)
 	if err != nil {
 		return 0
 	}
-	resolved, _ := filepath.EvalSymlinks(found)
-	if resolved == "" {
-		resolved = found
-	}
-	if resolved == filepath.Join(dir, tool.Bin) {
+	if realPath(found) == realPath(filepath.Join(dir, tool.Bin)) {
 		return 0
 	}
 	ui.Warn("another %s comes first on your PATH: %s", tool.Bin, found)
 	return 1
+}
+
+func realPath(path string) string {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return resolved
+	}
+	return path
 }
 
 func checkCatalog() int {
