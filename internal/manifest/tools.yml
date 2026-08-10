@@ -28,6 +28,7 @@ tools:
     auth:
       kind: token
       defaultServerUrl: http://localhost:1337
+      tokenPath: /dashboard/settings/account/developer
       transport: bearer
       store:
         kind: file
@@ -83,6 +84,7 @@ tools:
     skill: nuage
     auth:
       kind: token
+      tokenPath: /settings/api
       transport: bearer
       store:
         kind: file

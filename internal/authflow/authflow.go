@@ -66,7 +66,7 @@ func Login(tool manifest.Tool, opts Options) (Outcome, error) {
 	case "device":
 		cred.Token, err = deviceLogin(a, serverURL, opts)
 	case "token":
-		cred.Token, err = tokenLogin(tool)
+		cred.Token, err = tokenLogin(tool, serverURL, opts.NoBrowser)
 	}
 	if err != nil {
 		return outcome, err

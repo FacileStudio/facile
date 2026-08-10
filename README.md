@@ -26,7 +26,7 @@ facile list                Show the catalog and what is installed
 facile update [tool...]    Update installed tools to their latest release
 facile uninstall <tool>    Remove a tool's binary
 facile doctor              Check PATH, shadowed binaries and interrupted installs
-facile login [tool...]     Sign in, once, to the tools that have accounts
+facile login [tool...]     Sign in to every installed tool that has an account
 facile logout [tool...]    Forget a stored credential, keep the server URL
 ```
 
@@ -39,6 +39,15 @@ agents on your machine. `facile list --json` prints one JSON document.
 ```sh
 facile login
 ```
+
+With no arguments it signs in to every installed tool that has an account, so
+you type one command rather than one per tool. `--pick` chooses from a list,
+`--all` includes tools you have not installed.
+
+The browser flows run first on purpose: they federate to the same identity
+provider, so the first one asks for a password and the rest complete without
+you touching anything. For the two tools that mint a key in a dashboard instead
+of federating, facile opens that page rather than telling you to go find it.
 
 `facile login <tool>` runs that tool's own sign-in flow and writes the result
 **into the exact place that tool's CLI already reads from** — its keychain entry,
