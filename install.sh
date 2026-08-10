@@ -44,10 +44,12 @@ Options:
   --bin-dir <dir>   Directory to install into (default: ~/.local/bin)
   --version <tag>   Release tag to install (default: latest)
   --source          Build from source, ignore published releases
+  --no-path         Do not touch shell config files to put the bin dir on PATH
   -h, --help        Show this help
 
 Environment:
   FACILE_BIN_DIR    Same as --bin-dir
+  FACILE_NO_PATH    Same as --no-path
   NO_COLOR          Disable colored output
 EOF
 }
@@ -58,6 +60,13 @@ parse_args() {
   BIN_DIR="${FACILE_BIN_DIR:-$HOME/.local/bin}"
   VERSION=""
   FROM_SOURCE=0
+  # Writing to shell config by default is what rustup, bun and uv do, and the
+  # alternative — printing a line and hoping it gets read — is the failure this
+  # exists to fix. CI is the one place it is wrong: a runner does not want a
+  # ~/.bashrc conjured for it, and it sets its own PATH anyway.
+  SETUP_PATH=1
+  [ -z "${CI:-}" ] || SETUP_PATH=0
+  [ -z "${FACILE_NO_PATH:-}" ] || SETUP_PATH=0
   while [ $# -gt 0 ]; do
     case "$1" in
       --bin-dir) BIN_DIR="${2:?--bin-dir needs a value}"; shift 2 ;;
@@ -65,11 +74,14 @@ parse_args() {
       --version) VERSION="${2:?--version needs a value}"; shift 2 ;;
       --version=*) VERSION="${1#*=}"; shift ;;
       --source) FROM_SOURCE=1; shift ;;
+      --no-path) SETUP_PATH=0; shift ;;
       -h|--help) usage; exit 0 ;;
       *) die "unknown option: $1 — run install.sh --help" ;;
     esac
   done
   BIN_DIR="${BIN_DIR%/}"
+  PATH_CHANGED=0
+  PATH_ALREADY=0
 }
 
 detect_platform() {
@@ -168,6 +180,123 @@ atomic_install() {
   mv -f "$staged" "$dest" || { rm -f "$staged"; die "cannot write $dest"; }
 }
 
+# --- PATH ---------------------------------------------------------------------
+#
+# A bin dir nothing can reach is not an install. The suite standard is
+# ~/.local/bin, which macOS does not put on PATH by default, so persisting it is
+# part of the job rather than a warning in the output that nobody reads.
+
+PATH_MARKER='# facile installer'
+
+# path_literal keeps the entry portable: written as $HOME/... it survives a home
+# directory that moves and a dotfile repo shared across machines.
+path_literal() {
+  case "$BIN_DIR" in
+    "$HOME"/*) printf '$HOME/%s' "${BIN_DIR#"$HOME"/}" ;;
+    *) printf '%s' "$BIN_DIR" ;;
+  esac
+}
+
+# path_snippet guards the prepend at *runtime* rather than at write time. Config
+# files get sourced twice in more setups than you would expect — a .bash_profile
+# that sources .bashrc, a login shell inside tmux — and a runtime guard makes
+# that harmless instead of leaving duplicates in PATH.
+path_snippet() {
+  local kind="$1" dir="$2"
+  case "$kind" in
+    fish)
+      printf '\n%s\nif not contains %s $PATH\n    set -gx PATH %s $PATH\nend\n' \
+        "$PATH_MARKER" "$dir" "$dir"
+      ;;
+    *)
+      printf '\n%s\ncase ":$PATH:" in\n  *":%s:"*) ;;\n  *) export PATH="%s:$PATH" ;;\nesac\n' \
+        "$PATH_MARKER" "$dir" "$dir"
+      ;;
+  esac
+}
+
+# uses_shell is true when the machine has the shell at all: the binary exists,
+# it is the login shell, or it has already left a config file behind.
+uses_shell() {
+  local name="$1" f
+  shift
+  command -v "$name" >/dev/null 2>&1 && return 0
+  [ "$(basename "${SHELL:-}")" = "$name" ] && return 0
+  for f in "$@"; do
+    [ -e "$f" ] && return 0
+  done
+  return 1
+}
+
+# path_targets prints "kind:file" per shell present. zsh, bash and fish are what
+# people actually log in with; anything else falls back to the printed export.
+path_targets() {
+  local zdot fishrc f wrote
+  zdot="${ZDOTDIR:-$HOME}"
+  fishrc="${XDG_CONFIG_HOME:-$HOME/.config}/fish/config.fish"
+
+  if uses_shell zsh "$zdot/.zshrc"; then
+    printf 'posix:%s\n' "$zdot/.zshrc"
+  fi
+
+  # macOS starts bash as a login shell, which reads .bash_profile and never
+  # .bashrc; Linux does the opposite. Writing whichever already exists covers
+  # both, and .bashrc is the right one to create when neither does.
+  if uses_shell bash "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile"; then
+    wrote=0
+    for f in "$HOME/.bashrc" "$HOME/.bash_profile"; do
+      if [ -f "$f" ]; then
+        printf 'posix:%s\n' "$f"
+        wrote=1
+      fi
+    done
+    [ "$wrote" -eq 1 ] || printf 'posix:%s\n' "$HOME/.bashrc"
+  fi
+
+  if uses_shell fish "$fishrc"; then
+    printf 'fish:%s\n' "$fishrc"
+  fi
+
+  return 0
+}
+
+# configure_path never fails the install. The binary is already on disk and
+# usable by absolute path; an unwritable dotfile is worth a warning, not an
+# aborted installation.
+configure_path() {
+  [ "$SETUP_PATH" -eq 1 ] || return 0
+  case ":$PATH:" in
+    *":$BIN_DIR:"*) return 0 ;;
+  esac
+
+  local literal targets target kind file dir
+  literal="$(path_literal)"
+  targets="$(path_targets)"
+  [ -n "$targets" ] || return 0
+
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    kind="${target%%:*}"
+    file="${target#*:}"
+
+    if [ -f "$file" ] &&
+       grep -qF -e "$PATH_MARKER" -e "$literal" -e "$BIN_DIR" "$file" 2>/dev/null; then
+      PATH_ALREADY=$((PATH_ALREADY + 1))
+      continue
+    fi
+
+    dir="$(dirname "$file")"
+    mkdir -p "$dir" 2>/dev/null || { warn "cannot create ${dir/#$HOME/\~}"; continue; }
+
+    if path_snippet "$kind" "$literal" >> "$file" 2>/dev/null; then
+      ok "PATH set in ${file/#$HOME/\~}"
+      PATH_CHANGED=$((PATH_CHANGED + 1))
+    else
+      warn "cannot write ${file/#$HOME/\~}"
+    fi
+  done <<< "$targets"
+}
+
 # --- report -----------------------------------------------------------------
 
 report() {
@@ -176,10 +305,22 @@ report() {
     die "$BIN installed to $BIN_DIR/$BIN but does not run"
   ok "${version:-$BIN} installed to ${BIN_DIR/#$HOME/\~}/$BIN"
 
+  configure_path
+
   case ":$PATH:" in
     *":$BIN_DIR:"*) ;;
     *)
-      warn "${BIN_DIR/#$HOME/\~} is not on your PATH"
+      # A script cannot change the PATH of the shell that invoked it, so even a
+      # successful write needs one manual step for the terminal already open.
+      # Saying "not on your PATH" when the config already has it is worse than
+      # useless: it invites a second copy of the line, added by hand.
+      if [ "$PATH_CHANGED" -gt 0 ]; then
+        info "Open a new terminal, or run this once in the current one:"
+      elif [ "$PATH_ALREADY" -gt 0 ]; then
+        info "Already in your shell config — open a new terminal, or run:"
+      else
+        warn "${BIN_DIR/#$HOME/\~} is not on your PATH"
+      fi
       hint "export PATH=\"$BIN_DIR:\$PATH\""
       ;;
   esac
