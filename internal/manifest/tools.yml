@@ -239,7 +239,7 @@ tools:
     bin: ardoise
     build: bun
     srcSubdir: .
-    asset: ""
+    asset: ardoise
     requires:
       - typst
     auth:
