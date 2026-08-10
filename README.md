@@ -24,11 +24,40 @@ facile list                Show the catalog and what is installed
 facile update [tool...]    Update installed tools to their latest release
 facile uninstall <tool>    Remove a tool's binary
 facile doctor              Check PATH, shadowed binaries and interrupted installs
+facile login [tool...]     Sign in, once, to the tools that have accounts
+facile logout [tool...]    Forget a stored credential, keep the server URL
 ```
 
 `--all` takes the whole catalog. `--source` skips published binaries and builds
 from source. `--no-skill` skips registering the tool's skill with the AI coding
 agents on your machine. `facile list --json` prints one JSON document.
+
+## One login
+
+```sh
+facile login
+```
+
+`facile login <tool>` runs that tool's own sign-in flow and writes the result
+**into the exact place that tool's CLI already reads from** — its keychain entry,
+its YAML file, its JSON config. Nothing in the nine CLIs had to change for this
+to work.
+
+Which flow runs is data, not code: the catalog records each tool's discovery
+endpoint, its loopback SSO parameters, its password endpoint or its device flow,
+and facile does what the entry says. A tool with no account says so and exits 0,
+because "capsule needs no login" is information, not a failure.
+
+Files that hold more than a credential are read-modify-write. `nuage`'s config
+also carries `sync_dir` and `ignore_patterns`, and an installer that reset a
+user's sync directory to log them in would not be a convenience. Credentials are
+created at `0600` rather than written and then chmodded, and a keychain that
+cannot be reached falls back to a `0600` file with a warning instead of refusing
+to store anything — a headless Linux box has no secret service, and that is not
+a reason to have no login.
+
+`facile logout` clears the credential and deliberately leaves the server URL, so
+signing back in does not mean retyping where your instance lives.
 
 ## The catalog
 
