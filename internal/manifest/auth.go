@@ -30,6 +30,11 @@ type Auth struct {
 	// IdentityPath is fetched after login purely to name who signed in.
 	IdentityPath string `yaml:"identityPath"`
 
+	// TokenPath is the page where a human mints the credential by hand, for
+	// the tools that have no login endpoint to drive. facile opens it rather
+	// than telling the user to go and find it.
+	TokenPath string `yaml:"tokenPath"`
+
 	// Transport is how the credential is later presented: bearer or cookie.
 	Transport  string `yaml:"transport"`
 	CookieName string `yaml:"cookieName"`
@@ -123,4 +128,22 @@ func (t Tool) EnvToken() string {
 		return ""
 	}
 	return t.Auth.EnvToken
+}
+
+// AuthKind is the flow this tool needs, or "none".
+func (t Tool) AuthKind() string {
+	if t.Auth == nil || t.Auth.Kind == "" {
+		return "none"
+	}
+	return t.Auth.Kind
+}
+
+// TokenPage is where a human goes to mint the credential themselves. Only the
+// tools with no login endpoint have one, and opening it beats printing a
+// sentence that sends the user hunting through a dashboard for the right page.
+func (t Tool) TokenPage(serverURL string) string {
+	if t.Auth == nil || t.Auth.TokenPath == "" || serverURL == "" {
+		return ""
+	}
+	return strings.TrimSuffix(serverURL, "/") + t.Auth.TokenPath
 }

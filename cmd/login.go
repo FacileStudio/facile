@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FacileStudio/facile/internal/authflow"
+	"github.com/FacileStudio/facile/internal/installer"
 	"github.com/FacileStudio/facile/internal/manifest"
 	"github.com/FacileStudio/facile/internal/ui"
 )
@@ -18,45 +19,70 @@ var (
 	flagServer    string
 	flagNoBrowser bool
 	flagLoginAll  bool
+	flagPick      bool
 )
 
 var loginCmd = &cobra.Command{
 	Use:   "login [tool...]",
 	Short: "Sign in to Facile tools",
 	Long: "Run each tool's own login flow and write the credential where that tool " +
-		"already reads it from.\n\nWith no arguments it opens a picker of the tools " +
-		"that have accounts. Pass --all to sign in to every one of them.",
+		"already reads it from.\n\nWith no arguments it signs in to every installed tool " +
+		"that has an account. Pass --pick to choose, or --all to include tools that are " +
+		"not installed yet.",
 	RunE: func(_ *cobra.Command, args []string) error {
 		tools, err := chooseLogins(args)
 		if err != nil {
 			return err
 		}
 		if len(tools) == 0 {
-			ui.Step("Nothing selected")
+			ui.Step("No installed tool needs a login")
+			ui.Hint("run `facile install` first, or `facile login --all`")
 			return nil
 		}
-		return loginAll(tools)
+		return loginAll(order(tools))
 	},
 }
 
 func init() {
 	loginCmd.Flags().StringVar(&flagServer, "server", "", "Server URL to sign in to")
 	loginCmd.Flags().BoolVar(&flagNoBrowser, "no-browser", false, "Print the sign-in URL instead of opening a browser")
-	loginCmd.Flags().BoolVar(&flagLoginAll, "all", false, "Sign in to every tool that has an account")
+	loginCmd.Flags().BoolVar(&flagLoginAll, "all", false, "Include tools that are not installed")
+	loginCmd.Flags().BoolVar(&flagPick, "pick", false, "Choose from a list instead of taking every installed tool")
 	rootCmd.AddCommand(loginCmd)
 }
 
+// chooseLogins defaults to what is installed and needs an account. Making the
+// user select from a list every time is a question with one sensible answer,
+// and asking it is the friction, not the flows.
 func chooseLogins(args []string) ([]manifest.Tool, error) {
-	if flagLoginAll {
-		return withAccounts(), nil
-	}
-	if len(args) > 0 {
+	switch {
+	case len(args) > 0:
 		return resolve(args)
+	case flagLoginAll:
+		return withAccounts(), nil
+	case flagPick:
+		if !isatty.IsTerminal(os.Stdin.Fd()) {
+			return nil, fmt.Errorf("--pick needs a terminal — name the tools instead")
+		}
+		return pickLogins()
 	}
-	if !isatty.IsTerminal(os.Stdin.Fd()) {
-		return nil, fmt.Errorf("no tool named — pass tool names or --all when not on a terminal")
+	return installedWithAccounts(), nil
+}
+
+// order runs the browser flows first. They all federate to the same identity
+// provider, so once one has authenticated the rest complete without the user
+// touching anything — which only helps if they do not come last, after the
+// prompts have already made the run feel manual.
+func order(tools []manifest.Tool) []manifest.Tool {
+	var browser, rest []manifest.Tool
+	for _, tool := range tools {
+		if tool.AuthKind() == "sso" {
+			browser = append(browser, tool)
+			continue
+		}
+		rest = append(rest, tool)
 	}
-	return pickLogins()
+	return append(browser, rest...)
 }
 
 // withAccounts is the subset --all and the picker offer. A tool with no login
@@ -65,6 +91,19 @@ func withAccounts() []manifest.Tool {
 	var tools []manifest.Tool
 	for _, tool := range catalog().Tools {
 		if tool.NeedsLogin() {
+			tools = append(tools, tool)
+		}
+	}
+	return tools
+}
+
+// installedWithAccounts is the default set: signing in to a tool the user has
+// not installed is work they did not ask for.
+func installedWithAccounts() []manifest.Tool {
+	dir := binDir()
+	var tools []manifest.Tool
+	for _, tool := range withAccounts() {
+		if _, ok := installer.Installed(dir, tool.Bin); ok {
 			tools = append(tools, tool)
 		}
 	}

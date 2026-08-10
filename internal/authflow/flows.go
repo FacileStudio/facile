@@ -123,8 +123,18 @@ func deviceLogin(a *manifest.Auth, serverURL string, opts Options) (string, erro
 }
 
 // tokenLogin covers the tools that mint their credential elsewhere: opus in its
-// dashboard, nuage by hand. There is no flow to drive, only a value to accept.
-func tokenLogin(tool manifest.Tool) (string, error) {
+// dashboard, nuage by hand. There is no flow to drive, only a value to accept —
+// so the one thing worth doing is opening the page, since "generate a key in
+// your dashboard" otherwise means hunting for which page that is.
+func tokenLogin(tool manifest.Tool, serverURL string, noBrowser bool) (string, error) {
+	if page := tool.TokenPage(serverURL); page != "" {
+		if noBrowser || !openBrowser(page) {
+			ui.Step("Generate a %s token at %s", tool.Name, page)
+		} else {
+			ui.Step("Opened %s — generate a token there", page)
+		}
+	}
+
 	ui.Step("Paste the %s token, it will not be echoed", tool.Name)
 	token, err := askSecret("Token")
 	if err != nil {
