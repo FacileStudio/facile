@@ -134,10 +134,12 @@ tools:
       envUrl: CASIER_SERVER_URL
       sso:
         startPath: /auth/oidc
-        portParam: cli_port
+        portParam: port
         stateParam: cli_state
-        callbackWith: token
-        callbackPath: /callback
+        extraParams: flow=cli
+        callbackWith: code
+        callbackPath: /
+        exchangePath: /auth/oidc/exchange
         requireState: true
       password:
         path: /auth/login
