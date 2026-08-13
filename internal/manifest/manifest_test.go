@@ -3,6 +3,7 @@ package manifest
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -63,5 +64,39 @@ func TestAMissingOverrideFallsBackToEmbedded(t *testing.T) {
 	m := Load(filepath.Join(t.TempDir(), "cache.yml"))
 	if len(m.Tools) == 0 {
 		t.Fatal("expected the embedded catalog")
+	}
+}
+
+// TestEmbeddedSSOCodeFlowsAreOnThePorteContract pins the shipped catalog to
+// porte's login-code flow. Every sso tool that exchanges a one-time code must
+// send flow=cli, put the port in `port` (never `cli_port`), echo the nonce as
+// `cli_state`, and expect the redirect at the root path — independently of the
+// remote-catalog guard, which only bites after a push lands. This reads the
+// embedded file, so it is a real pre-push gate.
+func TestEmbeddedSSOCodeFlowsAreOnThePorteContract(t *testing.T) {
+	m, err := parse(embedded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range m.Tools {
+		a := tool.Auth
+		if a == nil || a.Kind != "sso" || a.SSO == nil || a.SSO.CallbackWith != "code" {
+			continue
+		}
+		if a.SSO.PortParam != "port" {
+			t.Errorf("%s: porte reads the port as %q, want \"port\"", tool.Name, a.SSO.PortParam)
+		}
+		if a.SSO.StateParam != "cli_state" {
+			t.Errorf("%s: the nonce goes out as %q, want \"cli_state\"", tool.Name, a.SSO.StateParam)
+		}
+		if !strings.Contains(a.SSO.ExtraParams, "flow=cli") {
+			t.Errorf("%s: the code flow needs extraParams \"flow=cli\" (got %q)", tool.Name, a.SSO.ExtraParams)
+		}
+		if a.SSO.CallbackPath != "/" {
+			t.Errorf("%s: porte redirects the loopback to %q, want \"/\"", tool.Name, a.SSO.CallbackPath)
+		}
+		if a.SSO.ExchangePath == "" {
+			t.Errorf("%s: the code flow needs an exchange path", tool.Name)
+		}
 	}
 }

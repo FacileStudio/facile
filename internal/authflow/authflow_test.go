@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/FacileStudio/facile/internal/manifest"
@@ -265,7 +266,7 @@ func TestResolveServerPrecedence(t *testing.T) {
 func TestStartURLCarriesPortStateAndExtras(t *testing.T) {
 	flow := &manifest.SSOFlow{
 		StartPath:   "/auth/oidc",
-		PortParam:   "cli_port",
+		PortParam:   "port",
 		StateParam:  "cli_state",
 		ExtraParams: "flow=cli",
 	}
@@ -280,7 +281,7 @@ func TestStartURLCarriesPortStateAndExtras(t *testing.T) {
 	if parsed.Path != "/api/auth/oidc" {
 		t.Fatalf("path = %q", parsed.Path)
 	}
-	want := map[string]string{"cli_port": "52345", "cli_state": "deadbeef", "flow": "cli"}
+	want := map[string]string{"port": "52345", "cli_state": "deadbeef", "flow": "cli"}
 	for key, value := range want {
 		if got := parsed.Query().Get(key); got != value {
 			t.Fatalf("%s = %q, want %q", key, got, value)
@@ -343,6 +344,25 @@ func TestCatalogFlowsAreComplete(t *testing.T) {
 				t.Errorf("%s declares an SSO login with no start path", tool.Name)
 			} else if a.SSO.CallbackWith == "code" && a.SSO.ExchangePath == "" {
 				t.Errorf("%s exchanges a code with no exchange path", tool.Name)
+			}
+			// A code flow is porte's login-code contract: the parameters it
+			// needs are fixed, not per-server taste. Enforcing them here is what
+			// keeps a catalog entry from silently drifting back to the stale
+			// loopback-token spelling (cli_port / /callback / callbackWith
+			// token), which passes a token-less check and times out at login.
+			if a.SSO != nil && a.SSO.CallbackWith == "code" {
+				if a.SSO.PortParam != "port" {
+					t.Errorf("%s: porte reads the port as %q, want \"port\"", tool.Name, a.SSO.PortParam)
+				}
+				if a.SSO.StateParam != "cli_state" {
+					t.Errorf("%s: the nonce goes out as %q, want \"cli_state\"", tool.Name, a.SSO.StateParam)
+				}
+				if !strings.Contains(a.SSO.ExtraParams, "flow=cli") {
+					t.Errorf("%s: the code flow needs extraParams \u0022flow=cli\u0022 (got %q)", tool.Name, a.SSO.ExtraParams)
+				}
+				if a.SSO.CallbackPath != "/" {
+					t.Errorf("%s: porte redirects the loopback to %q, want \"/\"", tool.Name, a.SSO.CallbackPath)
+				}
 			}
 		case "password":
 			if a.Password == nil || a.Password.Path == "" {
