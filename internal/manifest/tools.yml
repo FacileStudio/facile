@@ -202,6 +202,53 @@ tools:
         with a session cookie, not a bearer token. The stored value is the
         antenne_session cookie value.
 
+  - name: journal
+    summary: Centralized logging — read, search, tail
+    repo: FacileStudio/journal-cli
+    branch: main
+    bin: journal
+    build: go
+    srcSubdir: .
+    asset: journal-cli
+    goVersionVar: github.com/FacileStudio/journal-cli/cmd.version
+    skill: journal
+    auth:
+      kind: sso
+      defaultServerUrl: https://journal.facile.studio
+      discoveryPath: /api/auth/config
+      transport: bearer
+      envToken: JOURNAL_TOKEN
+      envUrl: JOURNAL_URL
+      sso:
+        startPath: /api/auth/oidc
+        portParam: port
+        stateParam: cli_state
+        extraParams: flow=cli
+        callbackWith: code
+        callbackPath: /
+        exchangePath: /api/auth/oidc/exchange
+        requireState: true
+      password:
+        path: /api/auth/login
+        withEmail: true
+        tokenField: token
+      store:
+        kind: file
+        path: ${xdgConfig}/journal/config.json
+        format: json
+        tokenField: token
+        urlField: url
+        mode: 0o600
+        dirMode: 0o700
+        preserve: true
+      note: >-
+        Journal answers its read API with a porte session bearer token, and its
+        discovery endpoint advertises the same /api/auth/config shape as Mycelium
+        and casier, so the SSO login flow is identical. A password login reads
+        an email and a password (--email/--password); the token rides as a
+        bearer on every read. The CLI is read-only after login: ingest is the
+        Go SDK's and curl's job.
+
   - name: mycelium
     summary: Shared agent memory
     repo: FacileStudio/Mycelium
