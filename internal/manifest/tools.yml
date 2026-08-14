@@ -163,6 +163,7 @@ tools:
     srcSubdir: .
     asset: capsule-cli
     goVersionVar: github.com/FacileStudio/capsule-cli/cmd.version
+    skill: capsule
     auth:
       kind: none
       note: >-
@@ -178,6 +179,7 @@ tools:
     srcSubdir: .
     asset: antenne-cli
     goVersionVar: github.com/FacileStudio/antenne-cli/cmd.version
+    skill: antenne
     auth:
       kind: password
       defaultServerUrl: http://localhost:9090
@@ -323,6 +325,7 @@ tools:
     asset: ardoise
     requires:
       - typst
+    skill: ardoise
     auth:
       kind: none
       note: Ardoise runs entirely offline and has no account.

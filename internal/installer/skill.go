@@ -18,7 +18,7 @@ func registerSkill(tool manifest.Tool, work string) {
 	if tool.Skill == "" {
 		return
 	}
-	if !have("claude") && !have("codex") {
+	if !have("claude") && !have("codex") && !haveJardinSkills() {
 		return
 	}
 	body, err := skillBody(tool, work)
@@ -38,6 +38,24 @@ func registerSkill(tool manifest.Tool, work string) {
 			ui.Success("Codex skill installed")
 		}
 	}
+	if haveJardinSkills() {
+		// Pi (and any agent wired through the jardin extension) reads root
+		// .md files from the jardin skills dir. Write the same body there,
+		// named by the tool, so one integrations/SKILL.md feeds every agent.
+		dir := filepath.Join(home(), ".jardin", "skills")
+		if os.WriteFile(filepath.Join(dir, tool.Skill+".md"), body, 0o644) == nil {
+			ui.Success("pi skill installed")
+		}
+	}
+}
+
+// haveJardinSkills reports whether this machine runs the shared jardin
+// skills directory that the pi extension exposes. It is the one skill target
+// we deliberately do not create: writing an agent directory on a machine that
+// never set the bridge up would be noise. The dir's presence is the signal.
+func haveJardinSkills() bool {
+	info, err := os.Stat(filepath.Join(home(), ".jardin", "skills"))
+	return err == nil && info.IsDir()
 }
 
 func skillBody(tool manifest.Tool, work string) ([]byte, error) {
