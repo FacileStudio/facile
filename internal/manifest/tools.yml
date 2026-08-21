@@ -236,8 +236,8 @@ tools:
         tokenField: token
       store:
         kind: file
-        path: ${xdgConfig}/journal/config.json
-        format: json
+        path: ${xdgConfig}/journal/config.yml
+        format: yaml
         tokenField: token
         urlField: url
         mode: 0o600
