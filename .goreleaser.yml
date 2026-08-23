@@ -24,3 +24,21 @@ checksum:
 
 changelog:
   sort: asc
+
+brews:
+  - name: facile
+    homepage: https://github.com/FacileStudio/facile
+    description: One installer for the whole Facile Studio suite
+    directory: Formula
+    repository:
+      owner: FacileStudio
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    install: |
+      bin.install "facile"
+    test: |
+      system "#{bin}/facile", "--version"
