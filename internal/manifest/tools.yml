@@ -251,6 +251,52 @@ tools:
         bearer on every read. The CLI is read-only after login: ingest is the
         Go SDK's and curl's job.
 
+  - name: courrier
+    summary: Self-hosted email — read, search, send
+    repo: FacileStudio/courrier-cli
+    branch: main
+    bin: courrier
+    build: go
+    srcSubdir: .
+    asset: courrier-cli
+    goVersionVar: github.com/FacileStudio/courrier-cli/cmd.version
+    skill: courrier
+    auth:
+      kind: sso
+      defaultServerUrl: https://courrier.facile.studio
+      discoveryPath: /api/auth/config
+      transport: bearer
+      envToken: COURRIER_TOKEN
+      envUrl: COURRIER_SERVER_URL
+      sso:
+        startPath: /api/auth/oidc
+        portParam: port
+        stateParam: cli_state
+        extraParams: flow=cli
+        callbackWith: code
+        callbackPath: /
+        exchangePath: /api/auth/oidc/exchange
+        requireState: true
+      password:
+        path: /api/auth/login
+        withEmail: true
+        tokenField: token
+      store:
+        kind: file
+        path: ${xdgConfig}/courrier/config.yml
+        format: yaml
+        tokenField: token
+        urlField: url
+        mode: 0o600
+        dirMode: 0o700
+        preserve: true
+      note: >-
+        Courrier mounts porte under /api, so the SSO login flow is identical to
+        Journal's. Note that SSO_ONLY=true unregisters the local credential routes
+        entirely, so /api/auth/login answers 404 rather than 403 there, and
+        courrier.facile.studio runs exactly that way. The config file is YAML per
+        CLI-STANDARD 6.1 and carries a default_account key beside the token, so
+        preserve is required on write.
   - name: jardin
     summary: Shared agent memory
     repo: FacileStudio/Jardin
