@@ -28,6 +28,9 @@ var updateCmd = &cobra.Command{
 			return nil
 		}
 
+		if _, err := manifest.Refresh(store.CatalogPath()); err != nil {
+			ui.Warn("could not refresh the tool catalog, using the local copy")
+		}
 		tools, err := updateTargets(args)
 		if err != nil {
 			return err
@@ -35,9 +38,6 @@ var updateCmd = &cobra.Command{
 		if len(tools) == 0 {
 			ui.Step("No Facile tools installed")
 			return nil
-		}
-		if _, err := manifest.Refresh(store.CatalogPath()); err != nil {
-			ui.Warn("could not refresh the tool catalog, using the local copy")
 		}
 		return installAll(tools)
 	},
@@ -50,6 +50,8 @@ func init() {
 	rootCmd.AddCommand(updateCmd)
 }
 
+// updateTargets reads the catalog after Refresh has written it, so a tool added
+// upstream since the last run is selectable now rather than one run later.
 func updateTargets(args []string) ([]manifest.Tool, error) {
 	if len(args) > 0 {
 		return resolve(args)
