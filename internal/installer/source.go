@@ -17,7 +17,10 @@ var toolchains = map[string]string{
 	"bun":  "bun, install Bun from https://bun.sh",
 }
 
-func fromSource(tool manifest.Tool, work string) (string, error) {
+// fromSource builds the tool from a checkout. It clones the requested version
+// when one was named, so a --version whose archive cannot be downloaded still
+// installs that version rather than whatever main happens to be.
+func fromSource(tool manifest.Tool, version, work string) (string, error) {
 	hint, known := toolchains[tool.Build]
 	if !known {
 		return "", fmt.Errorf("unknown build backend: %s", tool.Build)
@@ -30,12 +33,17 @@ func fromSource(tool manifest.Tool, work string) (string, error) {
 		return "", err
 	}
 
+	ref := tool.Branch
+	if version != "" {
+		ref = version
+	}
+
 	ui.Step("Fetching source")
 	checkout := filepath.Join(work, "src")
 	clone := exec.Command("git", "clone", "--depth", "1", "--quiet",
-		"--branch", tool.Branch, "https://github.com/"+tool.Repo+".git", checkout)
+		"--branch", ref, "https://github.com/"+tool.Repo+".git", checkout)
 	if out, err := clone.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("cannot clone %s: %s", tool.Repo, strings.TrimSpace(string(out)))
+		return "", fmt.Errorf("cannot clone %s at %s: %s", tool.Repo, ref, strings.TrimSpace(string(out)))
 	}
 
 	ui.Step("Building from source, this takes a minute")

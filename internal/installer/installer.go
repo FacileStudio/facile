@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -50,15 +51,28 @@ func Install(tool manifest.Tool, opts Options) (string, error) {
 	return Verify(dest)
 }
 
+// fromReleaseFn is a seam for the tests. TestVerifyChecksumRejectsATamperedArchive
+// passed for as long as build swallowed that same error into a source build, so
+// the invariant needs a check at the layer that decides, not only at the one that
+// detects.
+var fromReleaseFn = fromRelease
+
+// build prefers a published release and falls back to a source build, except
+// after an integrity failure. A named cause beats a fixed sentence: a private
+// repo, a missing platform and a dead network all used to print the same line.
 func build(tool manifest.Tool, opts Options, work string) (string, error) {
 	if tool.Asset != "" && !opts.FromSrc {
-		path, err := fromRelease(tool, opts.Version, work)
+		path, err := fromReleaseFn(tool, opts.Version, work)
 		if err == nil {
 			return path, nil
 		}
-		ui.Warn("no published binary for this platform, building from source")
+		var integrity integrityError
+		if errors.As(err, &integrity) {
+			return "", err
+		}
+		ui.Warn("falling back to a source build: %s", err)
 	}
-	return fromSource(tool, work)
+	return fromSource(tool, opts.Version, work)
 }
 
 // Verify runs the installed binary and returns the single line it reports.

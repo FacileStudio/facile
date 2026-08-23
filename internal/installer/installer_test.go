@@ -6,10 +6,14 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/FacileStudio/facile/internal/manifest"
 )
 
 func TestVerifyChecksumRejectsATamperedArchive(t *testing.T) {
@@ -20,12 +24,58 @@ func TestVerifyChecksumRejectsATamperedArchive(t *testing.T) {
 	if err := verifyChecksum(blob, "tool_1.0.0_darwin_arm64.tar.gz", sums); err != nil {
 		t.Fatalf("a matching checksum must pass: %v", err)
 	}
-	if err := verifyChecksum([]byte("swapped"), "tool_1.0.0_darwin_arm64.tar.gz", sums); err == nil {
-		t.Fatal("a mismatched checksum must abort, never fall back")
+
+	var integrity integrityError
+	if err := verifyChecksum([]byte("swapped"), "tool_1.0.0_darwin_arm64.tar.gz", sums); !errors.As(err, &integrity) {
+		t.Fatalf("a mismatched checksum must abort as an integrity failure, got %v", err)
 	}
-	if err := verifyChecksum(blob, "absent.tar.gz", sums); err == nil {
-		t.Fatal("an archive missing from checksums.txt must abort")
+	if err := verifyChecksum(blob, "absent.tar.gz", sums); !errors.As(err, &integrity) {
+		t.Fatalf("an unlisted archive must abort as an integrity failure, got %v", err)
 	}
+	if errors.As(fmt.Errorf("tool_1.0.0_darwin_arm64.tar.gz returned 404 Not Found"), &integrity) {
+		t.Fatal("a transport failure must stay a source-build fallback")
+	}
+}
+
+// The rule is CLAUDE.md's: a checksum mismatch aborts. It is enforced in build,
+// not in verifyChecksum. Detection was always correct; the decision above it threw
+// the result away, and the test above passed throughout.
+func TestBuildRefusesASourceFallbackAfterAnIntegrityFailure(t *testing.T) {
+	stubRelease(t, func(manifest.Tool, string, string) (string, error) {
+		return "", integrityError{"checksum mismatch for tool_1.0.0_darwin_arm64.tar.gz — re-cut the release"}
+	})
+
+	_, err := build(fakeTool(), Options{}, t.TempDir())
+
+	var integrity integrityError
+	if !errors.As(err, &integrity) {
+		t.Fatalf("an integrity failure must abort the install, got %v", err)
+	}
+}
+
+func TestBuildStillFallsBackWhenAReleaseIsMerelyUnreachable(t *testing.T) {
+	stubRelease(t, func(manifest.Tool, string, string) (string, error) {
+		return "", fmt.Errorf("tool_1.0.0_darwin_arm64.tar.gz returned 404 Not Found")
+	})
+
+	_, err := build(fakeTool(), Options{}, t.TempDir())
+
+	if err == nil || !strings.Contains(err.Error(), "unknown build backend") {
+		t.Fatalf("a transport failure must reach the source build, got %v", err)
+	}
+}
+
+func stubRelease(t *testing.T, fn func(manifest.Tool, string, string) (string, error)) {
+	t.Helper()
+	original := fromReleaseFn
+	t.Cleanup(func() { fromReleaseFn = original })
+	fromReleaseFn = fn
+}
+
+// The build backend is deliberately unknown: fromSource rejects it before it can
+// reach git, so a fallback is visible in the error without touching the network.
+func fakeTool() manifest.Tool {
+	return manifest.Tool{Bin: "tool", Asset: "tool", Repo: "FacileStudio/tool", Branch: "main", Build: "unknown"}
 }
 
 func TestExtractFindsTheBinaryAndIgnoresTheRest(t *testing.T) {

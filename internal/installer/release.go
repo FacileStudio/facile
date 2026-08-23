@@ -23,8 +23,17 @@ const (
 	requestTimeout = 60 * time.Second
 )
 
+// integrityError marks a release artifact that downloaded but did not verify.
+// It is fatal by design: a wrong hash means the artifact is wrong, so the caller
+// must not quietly compile the same version from source instead.
+type integrityError struct{ msg string }
+
+func (e integrityError) Error() string { return e.msg }
+
 // LatestTag resolves a repository's latest release tag by following the
 // /releases/latest redirect. No GitHub API, so no rate limit and no token.
+// A repository facile cannot read looks exactly like one with no release, so
+// the error names both causes rather than guessing between them.
 func LatestTag(repo string) (string, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Head("https://github.com/" + repo + "/releases/latest")
@@ -35,7 +44,7 @@ func LatestTag(repo string) (string, error) {
 	final := resp.Request.URL.Path
 	_, tag, found := strings.Cut(final, "/releases/tag/")
 	if !found || tag == "" {
-		return "", fmt.Errorf("%s has published no release", repo)
+		return "", fmt.Errorf("cannot read a release tag for %s (%s) — check that the repository is public and has a release published", repo, resp.Status)
 	}
 	return tag, nil
 }
@@ -70,6 +79,7 @@ func fromRelease(tool manifest.Tool, version, work string) (string, error) {
 
 // verifyChecksum aborts on a mismatch. It never falls back to a source build:
 // a wrong hash means something is wrong with the artifact, not with the network.
+// Both failures are integrityError, which is the type build refuses.
 func verifyChecksum(blob []byte, name, sums string) error {
 	sum := sha256.Sum256(blob)
 	want := hex.EncodeToString(sum[:])
@@ -79,10 +89,10 @@ func verifyChecksum(blob []byte, name, sums string) error {
 			if fields[0] == want {
 				return nil
 			}
-			return fmt.Errorf("checksum mismatch for %s — refusing to install", name)
+			return integrityError{fmt.Sprintf("checksum mismatch for %s — re-cut the release, this artifact is not the one that was published", name)}
 		}
 	}
-	return fmt.Errorf("%s is not listed in checksums.txt", name)
+	return integrityError{fmt.Sprintf("%s is not listed in checksums.txt — re-cut the release", name)}
 }
 
 func extract(blob []byte, bin, work string) (string, error) {
