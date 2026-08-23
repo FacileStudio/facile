@@ -46,7 +46,10 @@ same breath.
 - **Atomic install.** Stage beside the destination, then rename. Writing over a
   running binary corrupts it, and that bug is the reason this repo exists.
 - **No state file.** What is installed is discovered by running the binaries.
-- **Warn, never fix, on PATH.** Do not edit the user's shell configuration.
+- **Warn, never fix, on PATH.** The binary never edits the user's shell
+  configuration; `reportPath` prints and stops. `install.sh` is the one
+  exception, and prepends the bin dir for zsh, bash and fish, because the
+  bootstrap runs before there is a facile to do the warning.
 - **Never sudo, never write outside `$HOME`** unless `--bin-dir` says so.
 
 ## Style
