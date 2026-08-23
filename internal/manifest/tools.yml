@@ -345,6 +345,24 @@ tools:
         flow stays for a headless machine with no browser to open, and Mycelium
         advertises it as device_enabled on its discovery endpoint.
 
+  - name: nacelle
+    summary: Terminal coding agent
+    repo: FacileStudio/nacelle-tui
+    branch: main
+    bin: nacelle
+    build: go
+    srcSubdir: .
+    asset: nacelle-tui
+    goVersionVar: main.version
+    auth:
+      kind: none
+      envToken: ANTHROPIC_API_KEY
+      note: >-
+        Nacelle is a client of the model APIs, not of a suite server, so there
+        is no suite login to drive. It reads ANTHROPIC_API_KEY for its default
+        backend and OPENROUTER_API_KEY for -backend openrouter; settings live
+        in ~/.nacelle.yml, which facile never writes.
+
   - name: spore
     summary: Monorepo package manager
     repo: FacileStudio/Spore
