@@ -26,6 +26,7 @@ var doctorCmd = &cobra.Command{
 		problems += checkTools(dir)
 		problems += checkCatalog()
 		problems += checkStaged(dir)
+		problems += checkSelfCopies()
 
 		if problems == 0 {
 			ui.Success("Everything looks healthy")
@@ -102,6 +103,37 @@ func checkCatalog() int {
 		return 1
 	}
 	return 0
+}
+
+// checkSelfCopies walks PATH for facile binaries other than the running one.
+// checkShadow cannot cover this: it compares against the catalog bin dir, and
+// facile is not a catalog tool. The failure it catches is specific — a self
+// update writes to the running binary's own directory, so a second copy earlier
+// on PATH keeps answering with the old version and the update looks like it did
+// nothing.
+func checkSelfCopies() int {
+	seen := map[string]bool{realPath(executable()): true}
+	var others []string
+	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
+		path := filepath.Join(dir, selfTool().Bin)
+		if info, err := os.Stat(path); err != nil || info.IsDir() {
+			continue
+		}
+		resolved := realPath(path)
+		if seen[resolved] {
+			continue
+		}
+		seen[resolved] = true
+		others = append(others, path)
+	}
+	if len(others) == 0 {
+		return 0
+	}
+	ui.Warn("%d other facile binary/binaries on your PATH", len(others))
+	for _, path := range others {
+		ui.Hint("%s", path)
+	}
+	return 1
 }
 
 // reportSelf resolves facile's own tag rather than reading the cache: doctor is

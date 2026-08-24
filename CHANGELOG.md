@@ -10,6 +10,41 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-08-24
+
+### Added
+
+- facile is the first row of `facile list`, and `facile update facile` replaces
+  the running binary in place — its own binary, at its own path, atomically,
+  which is what CLI-STANDARD §3.1 permits. A bare `facile update` takes facile
+  along with everything installed.
+
+  It refuses under Homebrew. brew records the version it staged, so overwriting
+  the file leaves brew's manifest claiming the old one and the next
+  `brew upgrade` re-stages from that record and reverts the update. It prints
+  `brew upgrade --cask facile` instead.
+
+  It also leaves a source build alone unless `--force` says otherwise, rather
+  than replacing a locally built binary with a release.
+- `facile doctor` reports other facile binaries on `PATH`. The existing shadow
+  check compares against the catalog bin dir and cannot see this: a self update
+  writes to the running binary's own directory, so a second copy earlier on
+  `PATH` keeps answering with the old version and the update looks like it did
+  nothing.
+
+### Fixed
+
+- `list` no longer claims a source build is out of date. A binary reporting a
+  commit SHA was rendered as `edf2b6f → 0.25.0` and counted in the footer, which
+  is not a comparison anyone can make — the SHA may be ahead of the tag. Worse,
+  the footer sent the reader to `facile update`, which would replace their build
+  with the release. `update` keeps treating the same unknown as a reinstall on
+  purpose: there the cost of being wrong is a download, not a false statement.
+- `facile install facile` and `facile uninstall facile` explain themselves
+  instead of reporting facile as an unknown tool, which read as a bug once the
+  listing started showing it.
+- The update-count footer no longer prints with a leading indent.
+
 ## [0.8.0] — 2026-08-24
 
 ### Added
@@ -167,7 +202,8 @@ record what shipped rather than what was written down at the time.
 - First release. One installer for the whole suite, with a bootstrap script,
   tests and CI.
 
-[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/FacileStudio/facile/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/FacileStudio/facile/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/FacileStudio/facile/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/FacileStudio/facile/compare/v0.6.1...v0.6.2

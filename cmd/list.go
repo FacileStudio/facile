@@ -43,13 +43,11 @@ var listCmd = &cobra.Command{
 			printNames(survey(m, nil))
 			return nil
 		}
-		latest := latestTags(m)
-		entries := survey(m, latest)
+		entries := survey(m, latestTags(m))
 		if flagJSON {
 			return json.NewEncoder(os.Stdout).Encode(entries)
 		}
 		printTable(entries)
-		printSelf(latest)
 		return nil
 	},
 }
@@ -75,27 +73,20 @@ func latestTags(m *manifest.Manifest) map[string]string {
 	return installer.Latest(store.LatestPath(), repos, flagCheck)
 }
 
-// printSelf reports facile below the table rather than inside it. facile is not
-// a catalog row, and rendering it as one would imply it can be installed and
-// uninstalled like the tools it manages.
-func printSelf(latest map[string]string) {
-	tag, outdated := selfOutdated(latest)
-	if !outdated {
-		return
-	}
-	ui.Hint("facile %s → %s, run `%s`", version, tag, upgradeHint())
-}
-
+// survey lists facile first, then the catalog in its own order. The installer
+// leads because it is the one row that explains the others: a stale facile is
+// the reason a tool can be missing a login flow or a whole catalog entry.
 func survey(m *manifest.Manifest, latest map[string]string) []entry {
 	dir := binDir()
-	entries := make([]entry, 0, len(m.Tools))
+	entries := make([]entry, 0, len(m.Tools)+1)
+	entries = append(entries, selfEntry(latest))
 	for _, tool := range m.Tools {
 		e := entry{Name: tool.Name, Summary: tool.Summary, Repo: tool.Repo}
 		if line, ok := installer.Installed(dir, tool.Bin); ok {
 			e.Installed = true
 			e.Version = versionOf(line)
 			e.Latest = strings.TrimPrefix(latest[tool.Repo], "v")
-			e.Outdated = e.Latest != "" && e.Version != "" && e.Latest != e.Version
+			e.Outdated = outdated(e.Version, e.Latest)
 		}
 		entries = append(entries, e)
 	}
@@ -113,12 +104,12 @@ func printNames(entries []entry) {
 // printTable pads on the plain text before colorizing, since ANSI escapes have
 // width in a format verb but none on screen.
 func printTable(entries []entry) {
-	nameWidth, stateWidth, outdated := 0, 0, 0
+	nameWidth, stateWidth, count := 0, 0, 0
 	for _, e := range entries {
 		nameWidth = max(nameWidth, len(e.Name))
 		stateWidth = max(stateWidth, len(stateOf(e)))
 		if e.Outdated {
-			outdated++
+			count++
 		}
 	}
 	for _, e := range entries {
@@ -131,12 +122,26 @@ func printTable(entries []entry) {
 		}
 		fmt.Printf("%-*s  %s  %s\n", nameWidth, e.Name, state, ui.Dim(e.Summary))
 	}
-	switch outdated {
-	case 0:
-	case 1:
-		ui.Hint("1 update available, run `facile update`")
-	default:
-		ui.Hint("%d updates available, run `facile update`", outdated)
+	if count == 1 {
+		ui.Out("%s", ui.Dim("1 update available, run `facile update`"))
+	} else if count > 1 {
+		ui.Out("%s", ui.Dim(fmt.Sprintf("%d updates available, run `facile update`", count)))
+	}
+	printBrewNote(entries)
+}
+
+// printBrewNote covers the one case the footer above cannot: a Homebrew facile
+// is outdated but `facile update` will not touch it, so counting it under an
+// instruction that cannot fix it would be a lie by arithmetic.
+func printBrewNote(entries []entry) {
+	if _, ok := selfDir(); ok {
+		return
+	}
+	for _, e := range entries {
+		if e.Name == "facile" && e.Outdated {
+			ui.Out("%s", ui.Dim("facile is a Homebrew cask, run `"+upgradeHint()+"`"))
+			return
+		}
 	}
 }
 

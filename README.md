@@ -46,12 +46,23 @@ published versions come from `~/.cache/facile/latest.json`, refreshed at most
 once a day, so listing stays instant and works offline; `--check` resolves them
 now. `--json` prints one JSON document, with `latest` and `outdated` per tool.
 
-facile reports its own version under the table when a newer one is published,
-and `facile doctor` reports it either way. It is not a catalog row: the catalog
-is what `install`, `update` and `uninstall` operate on, and facile does not
-manage itself. The upgrade command depends on how it was installed — a Homebrew
-cask is upgraded with `brew`, and telling you to re-run the install script would
-leave you with two copies and a `PATH` race.
+facile lists itself as the first row and `facile update facile` replaces the
+running binary in place, atomically, in its own directory. A bare
+`facile update` takes facile along with everything installed.
+
+Two things it will not do. It refuses when facile came from Homebrew, because
+brew records the version it staged and the next `brew upgrade` would re-stage
+from that record and revert the update — it prints `brew upgrade --cask facile`
+instead. And it leaves a source build alone, since a commit SHA cannot be
+ordered against a release tag; `--force` overrides that.
+
+`facile install facile` and `facile uninstall facile` stay refused. facile
+updates itself, but never installs or removes itself.
+
+A marker only appears when the installed version is a plain semver. A binary
+reporting a commit SHA may be ahead of the latest tag, and `list` will not claim
+otherwise — `update` treats the same unknown as a reinstall, on purpose, because
+there the cost of being wrong is a download rather than a false statement.
 
 ## One login
 

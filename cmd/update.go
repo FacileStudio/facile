@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -38,23 +39,33 @@ var updateCmd = &cobra.Command{
 		if _, err := manifest.Refresh(store.CatalogPath()); err != nil {
 			ui.Warn("could not refresh the tool catalog, using the local copy")
 		}
-		targets, err := updateTargets(args)
+		wantSelf, rest, named := splitSelf(args)
+		targets, err := updateTargets(rest, named)
 		if err != nil {
 			return err
 		}
-		if len(targets) == 0 {
+		if len(targets) == 0 && !wantSelf {
 			ui.Step("No Facile tools installed")
 			return nil
 		}
+
 		tools := targets
 		if !flagForce {
 			tools = stale(targets)
 		}
-		if len(tools) == 0 {
+		var failure error
+		switch {
+		case len(tools) > 0:
+			failure = installAll(tools)
+		case len(targets) > 0:
 			reportPath(binDir())
-			return nil
 		}
-		return installAll(tools)
+		if wantSelf {
+			if err := updateSelf(); err != nil && failure == nil {
+				failure = err
+			}
+		}
+		return failure
 	},
 }
 
@@ -119,16 +130,71 @@ func upToDate(have string, tool manifest.Tool) bool {
 	return installed != "" && installed == strings.TrimPrefix(tag, "v")
 }
 
+// splitSelf takes facile out of the argument list. It reports whether this run
+// should update facile, the arguments that remain, and whether any tool was
+// named at all — `facile update facile` must update facile alone, so an
+// argument list that held nothing else must not fall back to "every installed
+// tool" the way a bare `facile update` does.
+func splitSelf(args []string) (self bool, rest []string, named bool) {
+	self = len(args) == 0 || flagAll
+	for _, arg := range args {
+		if strings.EqualFold(arg, selfTool().Name) {
+			self = true
+			continue
+		}
+		rest = append(rest, arg)
+	}
+	return self, rest, len(args) > 0
+}
+
 // updateTargets reads the catalog after Refresh has written it, so a tool added
 // upstream since the last run is selectable now rather than one run later.
-func updateTargets(args []string) ([]manifest.Tool, error) {
+func updateTargets(args []string, named bool) ([]manifest.Tool, error) {
 	if len(args) > 0 {
 		return resolve(args)
+	}
+	if named {
+		return nil, nil
 	}
 	if flagAll {
 		return catalog().Tools, nil
 	}
 	return installedTools(), nil
+}
+
+// updateSelf replaces the running binary at its own path, which is the whole of
+// what CLI-STANDARD §3.1 permits: an updater that installs somewhere else is a
+// second install. atomicInstall stages beside the destination and renames, so
+// overwriting the binary currently executing is safe — that bug is the reason
+// this repo exists.
+func updateSelf() error {
+	dir, ok := selfDir()
+	if !ok {
+		ui.Step("facile %s is managed by Homebrew", version)
+		ui.Hint("%s", upgradeHint())
+		return nil
+	}
+	if !flagForce {
+		if !semver.MatchString(version) {
+			ui.Step("facile %s is a source build, leaving it alone", version)
+			ui.Hint("facile update facile --force replaces it with the published release")
+			return nil
+		}
+		if tag, behind := selfOutdated(selfLatest(true)); !behind {
+			ui.Success("facile %s is up to date", version)
+			_ = tag
+			return nil
+		}
+	}
+
+	ui.Step("Updating facile")
+	reported, err := installer.Install(selfTool(), installer.Options{BinDir: dir, FromSrc: flagSource})
+	if err != nil {
+		ui.Error("%s", err)
+		return fmt.Errorf("facile did not update")
+	}
+	ui.Success("%s installed to %s", reported, store.Tilde(filepath.Join(dir, selfTool().Bin)))
+	return nil
 }
 
 func installedTools() []manifest.Tool {
@@ -142,6 +208,14 @@ func installedTools() []manifest.Tool {
 	return tools
 }
 
+// unknownTool answers for facile separately now that `facile list` shows it.
+// "unknown tool: facile" on a name the listing just printed reads as a bug, and
+// the real answer is that facile updates itself but is never installed or
+// removed by itself.
 func unknownTool(name string, m *manifest.Manifest) error {
+	if strings.EqualFold(name, selfTool().Name) {
+		return fmt.Errorf("facile does not install or remove itself — " +
+			"`facile update facile` replaces the running binary in place")
+	}
 	return fmt.Errorf("unknown tool: %s — run `facile list` to see the catalog", name)
 }
