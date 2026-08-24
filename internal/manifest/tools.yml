@@ -377,3 +377,19 @@ tools:
     auth:
       kind: none
       note: Ardoise runs entirely offline and has no account.
+
+  - name: douane
+    summary: Vulnerability sweep — scan, rank, sweep the fleet
+    repo: FacileStudio/douane
+    branch: main
+    bin: douane
+    build: go
+    srcSubdir: .
+    asset: douane
+    goVersionVar: github.com/FacileStudio/douane/internal/version.stamp
+    auth:
+      kind: none
+      note: >-
+        Douane scans local lockfiles and queries osv.dev plus the KEV and EPSS
+        feeds directly. There is no suite server to log into and no credential
+        to store; its only network traffic is advisory lookups.
