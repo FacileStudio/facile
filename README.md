@@ -89,7 +89,6 @@ signing back in does not mean retyping where your instance lives.
 | `capsule` | End-to-end encrypted paste |
 | `antenne` | Alert log and delivery targets |
 | `mycelium` | Shared agent memory |
-| `spore` | Monorepo package manager |
 | `ardoise` | Invoice and contract PDFs |
 
 The catalog lives in [`internal/manifest/tools.yml`](internal/manifest/tools.yml).
