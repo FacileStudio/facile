@@ -27,7 +27,7 @@ facile install
 
 ```
 facile install [tool...]   Install tools, or open a picker with no arguments
-facile list                Show the catalog and what is installed
+facile list                Show the catalog, what is installed, and what is outdated
 facile update [tool...]    Update installed tools to their latest release
 facile uninstall <tool>    Remove a tool's binary
 facile doctor              Check PATH, shadowed binaries and interrupted installs
@@ -39,8 +39,12 @@ facile logout [tool...]    Forget a stored credential, keep the server URL
 release tag and leaves the ones that already match alone; `--force` reinstalls
 them anyway. `--all` takes the whole catalog. `--source` skips published
 binaries and builds from source. `--no-skill` skips registering the tool's skill
-with the AI coding agents on your machine. `facile list --json` prints one JSON
-document.
+with the AI coding agents on your machine.
+
+`list` marks an installed tool that has a newer release as `0.4.2 → 0.5.0`. The
+published versions come from `~/.cache/facile/latest.json`, refreshed at most
+once a day, so listing stays instant and works offline; `--check` resolves them
+now. `--json` prints one JSON document, with `latest` and `outdated` per tool.
 
 ## One login
 

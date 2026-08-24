@@ -34,6 +34,9 @@ func CacheDir() string {
 // CatalogPath is the on-disk cache of the remote tool catalog.
 func CatalogPath() string { return filepath.Join(CacheDir(), "tools.yml") }
 
+// LatestPath is the on-disk cache of the latest published tag per repository.
+func LatestPath() string { return filepath.Join(CacheDir(), "latest.json") }
+
 // Tilde shortens a path under $HOME for display.
 func Tilde(path string) string {
 	h := home()

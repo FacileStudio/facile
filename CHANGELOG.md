@@ -10,6 +10,15 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+### Added
+
+- `facile list` marks an installed tool that has a newer release as
+  `0.4.2 → 0.5.0` and prints a count under the table. The published versions
+  come from a new `~/.cache/facile/latest.json`, refreshed at most once a day,
+  so the listing stays instant and still works offline; `--check` resolves them
+  now instead. `--json` gains `latest` and `outdated` per tool, and `--quiet` never
+  touches the network at all.
+
 ## [0.6.1] — 2026-08-24
 
 ### Fixed
