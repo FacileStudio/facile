@@ -1,0 +1,53 @@
+# facile: the suite installer, enforced by filet.
+# https://github.com/FacileStudio/filet
+#
+#   filet check .     the rules
+#   filet roast .     the rules, with commentary
+#
+# No `limits:` block: filet's own defaults apply. Nothing is disabled and no
+# limit is raised, so the repo reports itself as it is. `failOn: error` is what
+# keeps the gate green while the standing warnings stay on screen, and every
+# one of them is a real finding waiting for a real fix, not a tuned threshold.
+#
+# The standing warnings are known and expected. `go.global.mutable` and
+# `go.init` come from the cobra idiom, where each command file declares its
+# flag variables at package level and registers itself with the root command in
+# `init()`. The long and complex functions live in `internal/credstore` and
+# `internal/authflow`, which are the two packages worth splitting first.
+
+ignore:
+  - .git
+  - dist
+  - build
+  - testdata
+  - coverage
+
+extensions: [.go]
+
+architecture:
+  requiredDirs: [cmd, internal]
+  # cmd/ holds one file per cobra command plus root.go, which owns the command
+  # tree and the persistent flags. Each internal package is a single concern:
+  # manifest reads the catalog, installer fetches and unpacks, store records
+  # what is installed, credstore writes credentials, authflow runs the login
+  # handshakes, ui prints.
+  requiredFiles:
+    "cmd": [root.go, install.go, uninstall.go, list.go, update.go, doctor.go, login.go, logout.go]
+    "internal/manifest": [manifest.go, auth.go]
+    "internal/installer": [installer.go, release.go, source.go, skill.go]
+    "internal/store": [store.go]
+    "internal/credstore": [credstore.go, file.go]
+    "internal/authflow": [authflow.go, flows.go, http.go, prompt.go, server.go, sso.go]
+    "internal/ui": [ui.go]
+
+style:
+  banInlineComments: true
+  banTODO: true
+  requireDocComments: true
+  banGlobalMutable: true
+  banInit: true
+  banTrailingSpace: true
+
+disabled: []
+
+failOn: error
