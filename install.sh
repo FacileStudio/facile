@@ -54,6 +54,11 @@ Environment:
 EOF
 }
 
+# Colors are set before argument parsing: parse_args rejects unknown options
+# through die(), which prints with them, and under `set -u` an unset C_ERR
+# kills the script before its own error message renders.
+setup_colors
+
 # --- steps ------------------------------------------------------------------
 
 parse_args() {
@@ -76,7 +81,7 @@ parse_args() {
       --source) FROM_SOURCE=1; shift ;;
       --no-path) SETUP_PATH=0; shift ;;
       -h|--help) usage; exit 0 ;;
-      *) die "unknown option: $1 — run install.sh --help" ;;
+      *) die "unknown option: $1 — this script installs facile itself; run 'facile install <tool>' for suite tools" ;;
     esac
   done
   BIN_DIR="${BIN_DIR%/}"
@@ -337,7 +342,6 @@ report() {
 
 main() {
   parse_args "$@"
-  setup_colors
   info "Installing facile"
   detect_platform
   make_workdir
