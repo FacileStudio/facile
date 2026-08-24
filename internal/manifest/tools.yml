@@ -363,22 +363,6 @@ tools:
         backend and OPENROUTER_API_KEY for -backend openrouter; settings live
         in ~/.nacelle.yml, which facile never writes.
 
-  - name: spore
-    summary: Monorepo package manager
-    repo: FacileStudio/Spore
-    branch: main
-    bin: spore
-    build: rust
-    srcSubdir: apps/cli
-    asset: spore
-    auth:
-      kind: none
-      envToken: SPORE_TOKEN
-      envUrl: SPORE_SPACE_URL
-      note: >-
-        Spore reads SPORE_TOKEN from the environment and persists nothing, so
-        there is no store for facile to write. Export it in your shell.
-
   - name: ardoise
     summary: Invoice and contract PDFs
     repo: FacileStudio/ardoise-cli
