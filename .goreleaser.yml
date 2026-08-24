@@ -25,11 +25,17 @@ checksum:
 changelog:
   sort: asc
 
-brews:
+# A cask, not a formula: goreleaser soft-deprecated `brews` in v2.10 and hard-
+# deprecated it in v2.16, and casks are the supported way to ship a prebuilt
+# binary. Casks are macOS only, so `brew install` no longer serves Linux here.
+# Linux installs through get.facile.studio, which is this suite's primary path
+# and the only one documented for the server.
+homebrew_casks:
   - name: facile
     homepage: https://github.com/FacileStudio/facile
     description: One installer for the whole Facile Studio suite
-    directory: Formula
+    binaries:
+      - facile
     repository:
       owner: FacileStudio
       name: homebrew-tap
@@ -38,7 +44,14 @@ brews:
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
-    install: |
-      bin.install "facile"
-    test: |
-      system "#{bin}/facile", "--version"
+    url:
+      verified: github.com/FacileStudio/
+    # The binaries are unsigned, and a cask download carries the quarantine
+    # attribute where a formula's did not. Without this the first run dies on
+    # "cannot be opened because the developer cannot be verified".
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/facile"]
+          end
