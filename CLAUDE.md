@@ -10,7 +10,8 @@ the ones that have accounts. It is the single implementation of "install a Facil
 tool" — each product repo's `install.sh` is a shim that bootstraps facile and
 delegates to it.
 
-The normative rules live in `~/Projects/Facile/Wiki/CLI-STANDARD.md`. When this
+The normative rules live in `~/.mycelium/memory/standards/cli.md`, synced to every
+machine by mycelium. When this
 repo and that document disagree, the document wins.
 
 ## Layout
