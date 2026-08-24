@@ -64,18 +64,18 @@ func TestStaleKeepsTheOutdatedToolsInCatalogOrder(t *testing.T) {
 			"FacileStudio/opus":    "v0.1.0",
 			"FacileStudio/Sablier": "v0.2.0",
 			"FacileStudio/Nuage":   "v0.3.0",
-			"FacileStudio/Spore":   "v0.6.1",
+			"FacileStudio/filet":   "v0.6.1",
 		}[repo], nil
 	})
 	stubBinary(t, dir, "opus", "opus 0.1.0")
 	stubBinary(t, dir, "sablier", "sablier 0.1.1")
-	stubBinary(t, dir, "spore", "spore 0.6.1")
+	stubBinary(t, dir, "filet", "filet 0.6.1")
 
 	tools := []manifest.Tool{
 		{Name: "opus", Bin: "opus", Asset: "opus", Repo: "FacileStudio/opus"},
 		{Name: "sablier", Bin: "sablier", Asset: "sablier", Repo: "FacileStudio/Sablier"},
 		{Name: "nuage", Bin: "nuage", Asset: "nuage", Repo: "FacileStudio/Nuage"},
-		{Name: "spore", Bin: "spore", Asset: "spore", Repo: "FacileStudio/Spore"},
+		{Name: "filet", Bin: "filet", Asset: "filet", Repo: "FacileStudio/filet"},
 	}
 
 	var got []string
