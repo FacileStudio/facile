@@ -46,6 +46,11 @@ same breath.
 - **Atomic install.** Stage beside the destination, then rename. Writing over a
   running binary corrupts it, and that bug is the reason this repo exists.
 - **No state file.** What is installed is discovered by running the binaries.
+- **`update` compares before it downloads.** The version the binary prints
+  against the latest release tag. Anything the comparison cannot establish — no
+  release asset, an unreadable tag, a version line that is not a plain semver —
+  reinstalls, because skipping is the claim that needs evidence. `--force`
+  bypasses the check.
 - **Warn, never fix, on PATH.** The binary never edits the user's shell
   configuration; `reportPath` prints and stops. `install.sh` is the one
   exception, and prepends the bin dir for zsh, bash and fish, because the

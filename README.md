@@ -35,9 +35,12 @@ facile login [tool...]     Sign in to every installed tool that has an account
 facile logout [tool...]    Forget a stored credential, keep the server URL
 ```
 
-`--all` takes the whole catalog. `--source` skips published binaries and builds
-from source. `--no-skill` skips registering the tool's skill with the AI coding
-agents on your machine. `facile list --json` prints one JSON document.
+`update` compares the version each installed binary reports against the latest
+release tag and leaves the ones that already match alone; `--force` reinstalls
+them anyway. `--all` takes the whole catalog. `--source` skips published
+binaries and builds from source. `--no-skill` skips registering the tool's skill
+with the AI coding agents on your machine. `facile list --json` prints one JSON
+document.
 
 ## One login
 
