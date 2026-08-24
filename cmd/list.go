@@ -43,11 +43,13 @@ var listCmd = &cobra.Command{
 			printNames(survey(m, nil))
 			return nil
 		}
-		entries := survey(m, latestTags(m))
+		latest := latestTags(m)
+		entries := survey(m, latest)
 		if flagJSON {
 			return json.NewEncoder(os.Stdout).Encode(entries)
 		}
 		printTable(entries)
+		printSelf(latest)
 		return nil
 	},
 }
@@ -59,20 +61,29 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 }
 
-// latestTags asks only about the tools that are installed. Resolving a release
-// for a tool the user does not have spends a request to render nothing.
+// latestTags asks only about the tools that are installed, plus facile itself.
+// Resolving a release for a tool the user does not have spends a request to
+// render nothing.
 func latestTags(m *manifest.Manifest) map[string]string {
 	dir := binDir()
-	var repos []string
+	repos := []string{facileRepo}
 	for _, tool := range m.Tools {
 		if _, ok := installer.Installed(dir, tool.Bin); ok {
 			repos = append(repos, tool.Repo)
 		}
 	}
-	if len(repos) == 0 {
-		return nil
-	}
 	return installer.Latest(store.LatestPath(), repos, flagCheck)
+}
+
+// printSelf reports facile below the table rather than inside it. facile is not
+// a catalog row, and rendering it as one would imply it can be installed and
+// uninstalled like the tools it manages.
+func printSelf(latest map[string]string) {
+	tag, outdated := selfOutdated(latest)
+	if !outdated {
+		return
+	}
+	ui.Hint("facile %s → %s, run `%s`", version, tag, upgradeHint())
 }
 
 func survey(m *manifest.Manifest, latest map[string]string) []entry {

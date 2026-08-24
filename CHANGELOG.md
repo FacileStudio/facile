@@ -10,6 +10,30 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-08-24
+
+### Added
+
+- facile reports its own version. `list` prints `facile 0.7.0 → 0.8.0` under
+  the table when a newer release is published, and `doctor` reports the version
+  either way, resolving the tag live rather than from the cache.
+
+  The upgrade command follows the install method: a Homebrew cask resolves into
+  the brew prefix and is upgraded with `brew`, while `facile update` writes to
+  `~/.local/bin`. Naming the wrong one leaves two copies and a `PATH` race,
+  which is the failure facile warns about everywhere else.
+
+  facile is deliberately **not** a catalog entry. The catalog is the input to
+  `install`, `update`, `uninstall` and `--all`, so a row for facile would offer
+  to uninstall the running binary. An outdated facile is also not a `doctor`
+  problem and cannot fail the command: it installs tools perfectly well, and a
+  health check that went red on every release would be red more often than
+  useful.
+
+### Fixed
+
+- The README tool table listed 8 of the 12 catalogued tools.
+
 ## [0.7.0] — 2026-08-24
 
 ### Added
@@ -143,7 +167,8 @@ record what shipped rather than what was written down at the time.
 - First release. One installer for the whole suite, with a bootstrap script,
   tests and CI.
 
-[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/FacileStudio/facile/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/FacileStudio/facile/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/FacileStudio/facile/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/FacileStudio/facile/compare/v0.6.0...v0.6.1

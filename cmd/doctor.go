@@ -27,10 +27,13 @@ var doctorCmd = &cobra.Command{
 		problems += checkCatalog()
 		problems += checkStaged(dir)
 
+		if problems == 0 {
+			ui.Success("Everything looks healthy")
+		}
+		reportSelf()
 		if problems > 0 {
 			return fmt.Errorf("%d problem(s) found", problems)
 		}
-		ui.Success("Everything looks healthy")
 		return nil
 	},
 }
@@ -99,6 +102,24 @@ func checkCatalog() int {
 		return 1
 	}
 	return 0
+}
+
+// reportSelf resolves facile's own tag rather than reading the cache: doctor is
+// the command a user runs when something is wrong, and answering that from a
+// day-old file is how you tell someone they are current when they are two
+// releases behind.
+//
+// It counts as no problem and cannot fail the command. An old facile installs
+// tools perfectly well, and a health check that goes red on every release would
+// be red more often than it is useful.
+func reportSelf() {
+	tag, outdated := selfOutdated(selfLatest(true))
+	if !outdated {
+		ui.Success("facile %s", version)
+		return
+	}
+	ui.Warn("facile %s is behind %s", version, tag)
+	ui.Hint("%s", upgradeHint())
 }
 
 // checkStaged looks for the temporary files an interrupted install leaves behind.

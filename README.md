@@ -46,6 +46,13 @@ published versions come from `~/.cache/facile/latest.json`, refreshed at most
 once a day, so listing stays instant and works offline; `--check` resolves them
 now. `--json` prints one JSON document, with `latest` and `outdated` per tool.
 
+facile reports its own version under the table when a newer one is published,
+and `facile doctor` reports it either way. It is not a catalog row: the catalog
+is what `install`, `update` and `uninstall` operate on, and facile does not
+manage itself. The upgrade command depends on how it was installed — a Homebrew
+cask is upgraded with `brew`, and telling you to re-run the install script would
+leave you with two copies and a `PATH` race.
+
 ## One login
 
 ```sh
@@ -92,8 +99,12 @@ signing back in does not mean retyping where your instance lives.
 | `casier` | Secrets and environment variables |
 | `capsule` | End-to-end encrypted paste |
 | `antenne` | Alert log and delivery targets |
+| `journal` | Centralized logging — read, search, tail |
+| `courrier` | Self-hosted email — read, search, send |
 | `mycelium` | Shared agent memory |
+| `nacelle` | Terminal coding agent |
 | `ardoise` | Invoice and contract PDFs |
+| `douane` | Vulnerability sweep — scan, rank, sweep the fleet |
 
 The catalog lives in [`internal/manifest/tools.yml`](internal/manifest/tools.yml).
 It is embedded at build time and refreshed from `main` at runtime, so a tenth
