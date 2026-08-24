@@ -10,6 +10,8 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-08-24
+
 ### Added
 
 - `facile list` marks an installed tool that has a newer release as
@@ -18,6 +20,31 @@ record what shipped rather than what was written down at the time.
   so the listing stays instant and still works offline; `--check` resolves them
   now instead. `--json` gains `latest` and `outdated` per tool, and `--quiet` never
   touches the network at all.
+
+  `update` still resolves the latest tag live. It decides whether to download,
+  and that decision must not read a day-old cache.
+- `douane` joins the tool catalog.
+
+### Fixed
+
+- `--no-color` now applies to an error raised while parsing the arguments.
+  Colors were set in `PersistentPreRun`, which cobra never reaches when a flag
+  is rejected, so the one output the flag exists to control was the one output
+  it could not reach.
+
+### Removed
+
+- `spore` leaves the catalog and the tool table; the repository was deleted
+  upstream. The installer test now uses `filet` as its fixture.
+
+## [0.6.2] — 2026-08-24
+
+### Changed
+
+- Homebrew installs ship as a cask. The formula path goreleaser used is
+  deprecated, and `homebrew_casks.binary` is deprecated with it — the cask
+  declares a `binaries` list instead.
+- CI actions move off the node 20 runtime.
 
 ## [0.6.1] — 2026-08-24
 
@@ -116,7 +143,9 @@ record what shipped rather than what was written down at the time.
 - First release. One installer for the whole suite, with a bootstrap script,
   tests and CI.
 
-[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/FacileStudio/facile/compare/v0.6.2...v0.7.0
+[0.6.2]: https://github.com/FacileStudio/facile/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/FacileStudio/facile/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/FacileStudio/facile/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/FacileStudio/facile/compare/v0.4.0...v0.5.0
