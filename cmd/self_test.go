@@ -33,7 +33,19 @@ func TestOutdated(t *testing.T) {
 		{"dev build", "dev", "0.8.0", false},
 		{"unresolved tag", "0.7.0", "", false},
 		{"nothing installed", "", "0.8.0", false},
-		{"prerelease", "0.8.0-rc1", "0.8.0", true},
+		{"prerelease is behind its release", "0.9.0-rc1", "0.9.0", true},
+		{"release is not behind its prerelease", "0.9.0", "0.9.0-rc1", false},
+
+		// A day-old cache can name a tag older than the running binary. Comparing
+		// for difference rendered this as `0.9.0 → 0.8.0` on a machine that had
+		// just upgraded — an arrow pointing backwards at a downgrade.
+		{"ahead of a stale cache", "0.9.0", "0.8.0", false},
+		{"ahead by a minor", "0.10.0", "0.9.0", false},
+		{"ahead by a patch", "0.9.1", "0.9.0", false},
+
+		// String comparison orders 0.10.0 below 0.9.0. Integers do not.
+		{"double digit minor", "0.9.0", "0.10.0", true},
+		{"double digit patch", "1.2.9", "1.2.10", true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

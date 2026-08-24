@@ -10,6 +10,22 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-08-24
+
+### Fixed
+
+- `list` compared versions for difference rather than order, so a binary newer
+  than the cached tag rendered as `facile 0.9.0 → 0.8.0` — an arrow pointing
+  backwards at a downgrade, counted in the footer as an available update. The
+  cache is a day old by design and the running binary can be ahead of it, which
+  made this routine for facile's own row and latent for every other. Comparison
+  is now an ordering on the parsed semver, which also fixes `0.10.0` sorting
+  below `0.9.0` as a string.
+- `facile update` on a Homebrew install resolved nothing before printing
+  `brew upgrade --cask facile`, so it said that on every run whether or not
+  there was anything to upgrade to, and left the version cache untouched. It
+  now checks first and reports being up to date when it is.
+
 ## [0.9.0] — 2026-08-24
 
 ### Added
@@ -202,7 +218,8 @@ record what shipped rather than what was written down at the time.
 - First release. One installer for the whole suite, with a bootstrap script,
   tests and CI.
 
-[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/FacileStudio/facile/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/FacileStudio/facile/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/FacileStudio/facile/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/FacileStudio/facile/compare/v0.6.2...v0.7.0

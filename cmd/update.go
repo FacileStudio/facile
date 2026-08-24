@@ -170,19 +170,25 @@ func updateTargets(args []string, named bool) ([]manifest.Tool, error) {
 func updateSelf() error {
 	dir, ok := selfDir()
 	if !ok {
+		// Resolve before mentioning brew. Returning early left the version cache
+		// untouched, so a Homebrew user was told to upgrade on every run and the
+		// listing kept naming whichever tag the cache happened to hold.
+		if _, behind := selfOutdated(selfLatest(true)); !behind {
+			ui.Success("facile %s is up to date", version)
+			return nil
+		}
 		ui.Step("facile %s is managed by Homebrew", version)
 		ui.Hint("%s", upgradeHint())
 		return nil
 	}
 	if !flagForce {
-		if !semver.MatchString(version) {
+		if !isSemver(version) {
 			ui.Step("facile %s is a source build, leaving it alone", version)
 			ui.Hint("facile update facile --force replaces it with the published release")
 			return nil
 		}
-		if tag, behind := selfOutdated(selfLatest(true)); !behind {
+		if _, behind := selfOutdated(selfLatest(true)); !behind {
 			ui.Success("facile %s is up to date", version)
-			_ = tag
 			return nil
 		}
 	}
