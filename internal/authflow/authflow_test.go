@@ -1,13 +1,9 @@
 package authflow
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/FacileStudio/facile/internal/manifest"
@@ -205,64 +201,6 @@ func TestCookieScraping(t *testing.T) {
 	}
 }
 
-func TestResolveServerPrecedence(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	stored := filepath.Join(home, ".stored.yml")
-	if err := os.WriteFile(stored, []byte("server_url: http://from-file\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	auth := func() *manifest.Auth {
-		return &manifest.Auth{
-			DefaultServerURL: "https://default.example",
-			EnvURL:           "TEST_SERVER_URL",
-			Store: &manifest.Store{
-				Kind: "file", Path: stored, Format: "yaml", URLField: "server_url",
-			},
-		}
-	}
-
-	cases := []struct {
-		name string
-		flag string
-		env  string
-		want string
-	}{
-		{"the flag wins", "http://from-flag", "http://from-env", "http://from-flag"},
-		{"then the environment", "", "http://from-env", "http://from-env"},
-		{"then what a previous login stored", "", "", "http://from-file"},
-		{"a bare host gets https", "example.test", "", "https://example.test"},
-		{"a trailing slash is dropped", "http://x/", "", "http://x"},
-	}
-
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			t.Setenv("TEST_SERVER_URL", c.env)
-			got, err := resolveServer(auth(), c.flag)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got != c.want {
-				t.Fatalf("resolveServer = %q, want %q", got, c.want)
-			}
-		})
-	}
-
-	t.Run("then the catalog default", func(t *testing.T) {
-		t.Setenv("TEST_SERVER_URL", "")
-		a := auth()
-		a.Store.Path = filepath.Join(home, "absent.yml")
-		got, err := resolveServer(a, "")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got != "https://default.example" {
-			t.Fatalf("resolveServer = %q, want the catalog default", got)
-		}
-	})
-}
-
 func TestStartURLCarriesPortStateAndExtras(t *testing.T) {
 	flow := &manifest.SSOFlow{
 		StartPath:   "/auth/oidc",
@@ -287,101 +225,4 @@ func TestStartURLCarriesPortStateAndExtras(t *testing.T) {
 			t.Fatalf("%s = %q, want %q", key, got, value)
 		}
 	}
-}
-
-func TestChooseFlow(t *testing.T) {
-	sso := &manifest.Auth{Kind: "sso", SSO: &manifest.SSOFlow{}}
-	ssoWithPassword := &manifest.Auth{Kind: "sso", SSO: &manifest.SSOFlow{}, Password: &manifest.PasswordFlow{Path: "/auth/login", WithEmail: true}}
-	password := &manifest.Auth{Kind: "password", Password: &manifest.PasswordFlow{Path: "/api/login"}}
-
-	cases := []struct {
-		name    string
-		auth    *manifest.Auth
-		found   discovery
-		want    string
-		wantErr bool
-	}{
-		{"an unreachable discovery keeps the declared kind", sso, discovery{}, "sso", false},
-		{"sso_only with no provider is a dead end", sso, discovery{answered: true, ssoOnly: true}, "", true},
-		{"no OIDC falls back to the password endpoint", ssoWithPassword, discovery{answered: true}, "password", false},
-		{"an instance with no password needs no prompt", password, discovery{answered: true, passwordNeeded: false}, "passwordless", false},
-		{"an instance with a password asks for it", password, discovery{answered: true, passwordNeeded: true}, "password", false},
-	}
-
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			got, err := chooseFlow(c.auth, c.found)
-			if c.wantErr {
-				if err == nil {
-					t.Fatalf("expected a refusal, got %q", got)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got != c.want {
-				t.Fatalf("chooseFlow = %q, want %q", got, c.want)
-			}
-		})
-	}
-}
-
-// TestCatalogFlowsAreComplete keeps the catalog and the implementation honest:
-// every tool that declares a login must carry the pieces that flow needs.
-func TestCatalogFlowsAreComplete(t *testing.T) {
-	for _, tool := range manifest.Load(filepath.Join(t.TempDir(), "absent.yml")).Tools {
-		if !tool.NeedsLogin() {
-			continue
-		}
-		a := tool.Auth
-		if a.Store == nil {
-			t.Errorf("%s declares a login with nowhere to store the result", tool.Name)
-		}
-		switch a.Kind {
-		case "sso":
-			if a.SSO == nil || a.SSO.StartPath == "" {
-				t.Errorf("%s declares an SSO login with no start path", tool.Name)
-			} else if a.SSO.CallbackWith == "code" && a.SSO.ExchangePath == "" {
-				t.Errorf("%s exchanges a code with no exchange path", tool.Name)
-			}
-			// A code flow is porte's login-code contract: the parameters it
-			// needs are fixed, not per-server taste. Enforcing them here is what
-			// keeps a catalog entry from silently drifting back to the stale
-			// loopback-token spelling (cli_port / /callback / callbackWith
-			// token), which passes a token-less check and times out at login.
-			if a.SSO != nil && a.SSO.CallbackWith == "code" {
-				if a.SSO.PortParam != "port" {
-					t.Errorf("%s: porte reads the port as %q, want \"port\"", tool.Name, a.SSO.PortParam)
-				}
-				if a.SSO.StateParam != "cli_state" {
-					t.Errorf("%s: the nonce goes out as %q, want \"cli_state\"", tool.Name, a.SSO.StateParam)
-				}
-				if !strings.Contains(a.SSO.ExtraParams, "flow=cli") {
-					t.Errorf("%s: the code flow needs extraParams \u0022flow=cli\u0022 (got %q)", tool.Name, a.SSO.ExtraParams)
-				}
-				if a.SSO.CallbackPath != "/" {
-					t.Errorf("%s: porte redirects the loopback to %q, want \"/\"", tool.Name, a.SSO.CallbackPath)
-				}
-			}
-		case "password":
-			if a.Password == nil || a.Password.Path == "" {
-				t.Errorf("%s declares a password login with no endpoint", tool.Name)
-			}
-			if a.Password != nil && a.Password.TokenField == "" && a.CookieName == "" {
-				t.Errorf("%s returns neither a token field nor a cookie name", tool.Name)
-			}
-		case "device":
-			if a.Device == nil || a.Device.StartPath == "" || a.Device.PollPath == "" {
-				t.Errorf("%s declares a device login with missing endpoints", tool.Name)
-			}
-		case "token":
-		default:
-			t.Errorf("%s declares unknown login kind %q", tool.Name, a.Kind)
-		}
-		if a.Store != nil && a.Store.Kind == "keychain" && a.Store.KeychainService == "" {
-			t.Errorf("%s stores in a keychain with no service name", tool.Name)
-		}
-	}
-	fmt.Fprint(os.Stdout, "")
 }

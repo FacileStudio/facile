@@ -9,7 +9,14 @@
 #
 # The auth block is transcribed from each CLI's own credential READ path. It is
 # not a preference — get one character wrong and facile writes a token the tool
-# will never find. Path templates: ~ is $HOME, ${xdgConfig} is $XDG_CONFIG_HOME
+# will never find.
+#
+# Two kinds carry the word device and they are different protocols. `device` is
+# a tool's own start/poll endpoints. `oidc-device` is RFC 8628 at the shared
+# identity provider, which is what a machine whose browser lives on another
+# device needs; a tool declaring it keeps its `sso` block, because the loopback
+# flow stays the same-machine path and is what runs until the provider
+# advertises the grant. Path templates: ~ is $HOME, ${xdgConfig} is $XDG_CONFIG_HOME
 # or ~/.config, ${userConfig} is the platform-native config dir (which on macOS
 # is ~/Library/Application Support, and is what Rust's dirs::config_dir returns).
 
@@ -52,10 +59,15 @@ tools:
     asset: sablier
     skill: sablier
     auth:
-      kind: sso
+      kind: oidc-device
       apiSuffix: /api
       discoveryPath: /auth/config
       transport: bearer
+      oidcDevice:
+        issuer: https://sso.facile.studio
+        clientId: facile-cli
+        scopes: openid profile email
+        exchangePath: /auth/oidc/device/exchange
       sso:
         startPath: /auth/oidc
         portParam: port
@@ -84,13 +96,18 @@ tools:
     asset: nuage
     skill: nuage
     auth:
-      kind: sso
+      kind: oidc-device
       apiSuffix: /api
       discoveryPath: /auth/config
       tokenPath: /settings/api
       transport: bearer
       envToken: NUAGE_TOKEN
       envUrl: NUAGE_SERVER_URL
+      oidcDevice:
+        issuer: https://sso.facile.studio
+        clientId: facile-cli
+        scopes: openid profile email
+        exchangePath: /auth/oidc/device/exchange
       sso:
         startPath: /auth/oidc
         portParam: port
@@ -124,7 +141,7 @@ tools:
     asset: casier
     skill: casier
     auth:
-      kind: sso
+      kind: oidc-device
       defaultServerUrl: https://casier.facile.studio/api
       apiSuffix: /api
       discoveryPath: /auth/config
@@ -132,6 +149,11 @@ tools:
       transport: bearer
       envToken: CASIER_TOKEN
       envUrl: CASIER_SERVER_URL
+      oidcDevice:
+        issuer: https://sso.facile.studio
+        clientId: facile-cli
+        scopes: openid profile email
+        exchangePath: /auth/oidc/device/exchange
       sso:
         startPath: /auth/oidc
         portParam: port
@@ -153,6 +175,14 @@ tools:
         format: toml
         urlField: server_url
         mode: 0o644
+      note: >-
+        The token goes to the OS keychain, keyed on the server URL including
+        its /api suffix. A headless Linux box has no secret service, which is
+        exactly the machine the device sign-in exists for, so facile writes the
+        token to a 0600 file beside the config and says so — casier-cli does
+        not read that file and its own error says to set CASIER_TOKEN instead,
+        so the login prints the export line rather than leaving a token
+        somewhere nothing will look.
 
   - name: capsule
     summary: End-to-end encrypted paste
@@ -215,12 +245,17 @@ tools:
     goVersionVar: github.com/FacileStudio/journal-cli/cmd.version
     skill: journal
     auth:
-      kind: sso
+      kind: oidc-device
       defaultServerUrl: https://journal.facile.studio
       discoveryPath: /api/auth/config
       transport: bearer
       envToken: JOURNAL_TOKEN
       envUrl: JOURNAL_URL
+      oidcDevice:
+        issuer: https://sso.facile.studio
+        clientId: facile-cli
+        scopes: openid profile email
+        exchangePath: /api/auth/oidc/device/exchange
       sso:
         startPath: /api/auth/oidc
         portParam: port
@@ -262,12 +297,17 @@ tools:
     goVersionVar: github.com/FacileStudio/courrier-cli/cmd.version
     skill: courrier
     auth:
-      kind: sso
+      kind: oidc-device
       defaultServerUrl: https://courrier.facile.studio
       discoveryPath: /api/auth/config
       transport: bearer
       envToken: COURRIER_TOKEN
       envUrl: COURRIER_SERVER_URL
+      oidcDevice:
+        issuer: https://sso.facile.studio
+        clientId: facile-cli
+        scopes: openid profile email
+        exchangePath: /api/auth/oidc/device/exchange
       sso:
         startPath: /api/auth/oidc
         portParam: port
@@ -307,11 +347,16 @@ tools:
     asset: Mycelium
     goVersionVar: github.com/FacileStudio/Mycelium/cmd.version
     auth:
-      kind: sso
+      kind: oidc-device
       discoveryPath: /api/auth/config
       transport: bearer
       envToken: MYCELIUM_TOKEN
       envUrl: MYCELIUM_URL
+      oidcDevice:
+        issuer: https://sso.facile.studio
+        clientId: facile-cli
+        scopes: openid profile email
+        exchangePath: /api/auth/oidc/device/exchange
       sso:
         startPath: /api/auth/oidc
         portParam: port
@@ -341,9 +386,11 @@ tools:
       note: >-
         Mycelium also keeps space, usage_token, rule_order and agents in the same
         file, so this store is read-modify-write. The separate usage token is
-        an Anthropic credential and is none of facile's business. The device
-        flow stays for a headless machine with no browser to open, and Mycelium
-        advertises it as device_enabled on its discovery endpoint.
+        an Anthropic credential and is none of facile's business. Mycelium's
+        own device endpoints stay recorded here — the server serves them and
+        advertises device_enabled — but facile no longer drives them: the
+        headless path is now the identity provider's RFC 8628 grant, which is
+        one sign-in for the whole suite rather than one per tool.
 
   - name: nacelle
     summary: Terminal coding agent

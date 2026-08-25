@@ -12,10 +12,16 @@ import (
 	"github.com/FacileStudio/facile/internal/ui"
 )
 
-// Options are the parts of a login the user controls from the command line.
+// Options are the parts of a login the user controls from the command line,
+// plus the run they belong to.
 type Options struct {
 	Server    string
 	NoBrowser bool
+
+	// Session is shared by every tool in one `facile login`, so a provider is
+	// discovered once and signed in to once. A nil Session still works and
+	// simply shares nothing, which is right for a single tool.
+	Session *Session
 }
 
 // Outcome is what the caller reports. It deliberately carries no credential.
@@ -35,6 +41,10 @@ type Outcome struct {
 
 // Login runs the tool's flow once and writes the credential into the exact
 // place the tool's own CLI reads it from.
+//
+// A password flow against an instance with no password configured answers 200
+// and sets no cookie: every caller is already served as the admin, so an empty
+// token there is a success with nothing to store rather than a failure.
 func Login(tool manifest.Tool, opts Options) (Outcome, error) {
 	a := tool.Auth
 	if a == nil || !tool.NeedsLogin() {
@@ -50,45 +60,40 @@ func Login(tool manifest.Tool, opts Options) (Outcome, error) {
 	cred := credstore.Credential{ServerURL: serverURL, Extra: extras()}
 	outcome := Outcome{ServerURL: serverURL}
 
-	kind, err := chooseFlow(a, found)
+	kind, err := chooseFlow(a, found, opts.Session)
 	if err != nil {
 		return outcome, err
 	}
-
-	switch kind {
-	case "passwordless":
+	if kind == "passwordless" {
 		outcome.Passwordless = true
 		outcome.Identity = found.username
-	case "sso":
-		cred.Token, err = ssoLogin(a, serverURL, opts)
-	case "password":
-		cred.Token, err = passwordLogin(a, serverURL)
-	case "device":
-		cred.Token, err = deviceLogin(a, serverURL, opts)
-	case "token":
-		cred.Token, err = tokenLogin(tool, serverURL, opts.NoBrowser)
-	}
-	if err != nil {
-		return outcome, err
 	}
 
-	// A password flow against an instance with no password configured answers
-	// 200 and sets no cookie: every caller is already served as the admin.
+	if cred.Token, err = runFlow(kind, tool, serverURL, opts); err != nil {
+		return outcome, err
+	}
 	if kind == "password" && cred.Token == "" {
 		outcome.Passwordless = true
 	}
 
+	return outcome, record(a, cred, &outcome)
+}
+
+// record writes the credential where the tool reads it and then names who
+// signed in. The identity lookup comes last and cannot fail the login: a run
+// that stored a working token succeeded whatever the name lookup answers.
+func record(a *manifest.Auth, cred credstore.Credential, outcome *Outcome) error {
 	written, err := credstore.Write(a.Store, cred)
 	if err != nil {
-		return outcome, err
+		return err
 	}
 	outcome.Locations = written.Locations
 	outcome.KeychainFallback = written.KeychainFallback
 
 	if outcome.Identity == "" {
-		outcome.Identity = identity(a, serverURL, cred.Token)
+		outcome.Identity = identity(a, cred.ServerURL, cred.Token)
 	}
-	return outcome, nil
+	return nil
 }
 
 // Logout clears the credential and leaves the server URL behind, so the next
@@ -105,46 +110,6 @@ func Logout(tool manifest.Tool) (Outcome, error) {
 		return Outcome{}, err
 	}
 	return Outcome{ServerURL: serverURL, Locations: cleared.Locations}, nil
-}
-
-// chooseFlow picks between the flows a tool declares. Discovery decides when it
-// answered; when it did not, the catalog's declared kind stands, because an
-// unreachable /auth/config is no reason to refuse to try.
-func chooseFlow(a *manifest.Auth, found discovery) (string, error) {
-	switch a.Kind {
-	case "sso":
-		if found.answered && found.ssoOnly && !found.oidcEnabled {
-			return "", fmt.Errorf("the server allows only SSO logins but has no provider configured — ask whoever runs it")
-		}
-		if a.Password != nil && found.answered && !found.ssoOnly {
-			if !found.oidcEnabled {
-				return "password", nil
-			}
-			if !confirm("Sign in with SSO?") {
-				return "password", nil
-			}
-		}
-		return "sso", nil
-
-	case "password":
-		if a.Password == nil {
-			return "", fmt.Errorf("the catalog declares a password login with no endpoint — report it against the facile catalog")
-		}
-		if found.answered && !a.Password.WithEmail && !found.passwordNeeded {
-			return "passwordless", nil
-		}
-		return "password", nil
-
-	case "device":
-		if a.Device == nil {
-			return "", fmt.Errorf("the catalog declares a device login with no endpoints — report it against the facile catalog")
-		}
-		return "device", nil
-
-	case "token":
-		return "token", nil
-	}
-	return "", fmt.Errorf("unknown login kind %q — report it against the facile catalog", a.Kind)
 }
 
 // extras supplies the values a store asks for by name, such as the machine

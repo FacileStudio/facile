@@ -177,3 +177,13 @@ func numberField(doc map[string]any, key string) int {
 	value, _ := doc[key].(float64)
 	return int(value)
 }
+
+// seconds reads a duration a server states in whole seconds, falling back when
+// it states nothing usable. A zero interval would busy-poll a provider and a
+// zero deadline would end the wait before it started.
+func seconds(value int, fallback time.Duration) time.Duration {
+	if value <= 0 {
+		return fallback
+	}
+	return time.Duration(value) * time.Second
+}

@@ -68,11 +68,16 @@ func TestAMissingOverrideFallsBackToEmbedded(t *testing.T) {
 }
 
 // TestEmbeddedSSOCodeFlowsAreOnThePorteContract pins the shipped catalog to
-// porte's login-code flow. Every sso tool that exchanges a one-time code must
-// send flow=cli, put the port in `port` (never `cli_port`), echo the nonce as
-// `cli_state`, and expect the redirect at the root path — independently of the
-// remote-catalog guard, which only bites after a push lands. This reads the
-// embedded file, so it is a real pre-push gate.
+// porte's login-code flow. Every tool that exchanges a one-time code must ask
+// the server for the cli flow, put the port in `port` and never in `cli_port`,
+// echo the nonce back as `cli_state`, and expect the redirect at the root path
+// — independently of the remote-catalog guard, which only bites after a push
+// lands. This reads the embedded file, so it is a real pre-push gate.
+//
+// It keys on the flow rather than on Kind on purpose. Moving a tool to
+// oidc-device leaves its loopback flow in place as the fallback, and a guard
+// that stopped looking at it the moment the kind changed would have quietly
+// unpinned six tools.
 func TestEmbeddedSSOCodeFlowsAreOnThePorteContract(t *testing.T) {
 	m, err := parse(embedded)
 	if err != nil {
@@ -80,7 +85,7 @@ func TestEmbeddedSSOCodeFlowsAreOnThePorteContract(t *testing.T) {
 	}
 	for _, tool := range m.Tools {
 		a := tool.Auth
-		if a == nil || a.Kind != "sso" || a.SSO == nil || a.SSO.CallbackWith != "code" {
+		if a == nil || a.SSO == nil || a.SSO.CallbackWith != "code" {
 			continue
 		}
 		if a.SSO.PortParam != "port" {

@@ -69,14 +69,16 @@ func chooseLogins(args []string) ([]manifest.Tool, error) {
 	return installedWithAccounts(), nil
 }
 
-// order runs the browser flows first. They all federate to the same identity
+// order runs the federated flows first. They all reach the same identity
 // provider, so once one has authenticated the rest complete without the user
 // touching anything — which only helps if they do not come last, after the
-// prompts have already made the run feel manual.
+// prompts have already made the run feel manual. It matters more under the
+// device grant than under the loopback one: there the shared thing is a code
+// somebody typed, not a cookie their browser was already holding.
 func order(tools []manifest.Tool) []manifest.Tool {
 	var browser, rest []manifest.Tool
 	for _, tool := range tools {
-		if tool.AuthKind() == "sso" {
+		if tool.Federates() {
 			browser = append(browser, tool)
 			continue
 		}
@@ -137,7 +139,7 @@ func pickLogins() ([]manifest.Tool, error) {
 }
 
 func loginAll(tools []manifest.Tool) error {
-	opts := authflow.Options{Server: flagServer, NoBrowser: flagNoBrowser}
+	opts := authflow.Options{Server: flagServer, NoBrowser: flagNoBrowser, Session: authflow.NewSession()}
 
 	var failed []string
 	for _, tool := range tools {

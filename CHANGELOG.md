@@ -10,6 +10,38 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+### Added
+
+- **`facile login` speaks the OIDC device flow (RFC 8628).** A sign-in on a
+  machine whose browser lives elsewhere no longer hangs. facile prints a short
+  code and a URL, the user opens the URL on any device, and the terminal
+  completes on its own — nothing is redirected to a loopback port on a machine
+  that is not the one running the browser.
+
+  The loopback flow assumed otherwise, and every one of the six federated tools
+  had the defect: the provider redirected the *browser's* machine to
+  `127.0.0.1:<port>`, where nothing listened, and the login code expired unused
+  while facile waited for a callback that could never arrive.
+
+  One authorization covers the whole run. The tools share an identity provider,
+  so the first asks for a code and the rest complete silently.
+
+  It is a new auth kind, `oidc-device`, distinct from the existing per-tool
+  `device` kind, which is a tool's own start/poll endpoints and a different
+  protocol. Endpoints come from the provider's discovery document, never from
+  paths assembled by facile: only the root `/.well-known/openid-configuration`
+  is real on this provider, and a per-application path answers 200 with the
+  single-page app's HTML.
+
+### Changed
+
+- sablier, nuage, casier, journal, courrier and mycelium move from `kind: sso`
+  to `kind: oidc-device` in the catalog. Each keeps its `sso` block: the
+  loopback flow is the same-machine fast path, and it is also what runs until
+  the provider lists the device grant in `grant_types_supported`. facile asks
+  rather than assumes, so the change is inert until the server side is ready
+  and needs no second release to switch on.
+
 ## [0.9.1] — 2026-08-24
 
 ### Fixed

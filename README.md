@@ -74,10 +74,29 @@ With no arguments it signs in to every installed tool that has an account, so
 you type one command rather than one per tool. `--pick` chooses from a list,
 `--all` includes tools you have not installed.
 
-The browser flows run first on purpose: they federate to the same identity
-provider, so the first one asks for a password and the rest complete without
-you touching anything. For the two tools that mint a key in a dashboard instead
-of federating, facile opens that page rather than telling you to go find it.
+The federated flows run first on purpose: they reach the same identity
+provider, so the first one asks and the rest complete without you touching
+anything. For the two tools that mint a key in a dashboard instead of
+federating, facile opens that page rather than telling you to go find it.
+
+### When your browser is on another machine
+
+Signing in on a server used to hang. The browser flow hands the provider a
+`127.0.0.1` port to redirect back to, and if the browser is on your laptop it
+gets redirected to *its* loopback, where nothing is listening. The code expired
+unused and facile waited for a callback that could never arrive.
+
+So the six federated tools now declare the OIDC device flow, RFC 8628. facile
+prints a short code and a URL, you open the URL on whatever device has a
+browser, type the code, and the terminal finishes on its own. Nothing is
+redirected anywhere. One code covers the whole run: the tools share a provider,
+so the first asks and the rest complete silently.
+
+The loopback flow stays as the fast path for a machine with its own browser,
+and it is still what runs when the provider does not advertise the device
+grant. facile asks `/.well-known/openid-configuration` rather than assuming, so
+this turns itself on the day the provider lists the grant and changes nothing
+before then.
 
 `facile login <tool>` runs that tool's own sign-in flow and writes the result
 **into the exact place that tool's CLI already reads from** — its keychain entry,
@@ -96,6 +115,11 @@ created at `0600` rather than written and then chmodded, and a keychain that
 cannot be reached falls back to a `0600` file with a warning instead of refusing
 to store anything — a headless Linux box has no secret service, and that is not
 a reason to have no login.
+
+A keychain that cannot be reached is the normal state of the headless box this
+flow exists for, so the token goes to a `0600` file instead and facile prints
+the one line that makes it usable — casier reads `CASIER_TOKEN`, not that file,
+and a login that quietly stored nothing would be worse than one that refused.
 
 `facile logout` clears the credential and deliberately leaves the server URL, so
 signing back in does not mean retyping where your instance lives.

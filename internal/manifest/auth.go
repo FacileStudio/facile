@@ -7,8 +7,11 @@ import "strings"
 // the result into that exact location, so the tool itself needs no change to
 // benefit. Every field here was read off a real CLI, not invented.
 type Auth struct {
-	// Kind is the flow facile runs: none, sso, password, device or token.
-	// "token" means the credential is minted elsewhere and pasted in.
+	// Kind is the flow facile runs: none, sso, oidc-device, password, device
+	// or token. "token" means the credential is minted elsewhere and pasted
+	// in. "device" is a tool's own headless endpoints; "oidc-device" is the
+	// RFC 8628 grant at the shared identity provider, and the two are not the
+	// same protocol — the prefix is there so the difference is visible here.
 	Kind string `yaml:"kind"`
 
 	// DefaultServerURL may be empty. A self-hosted appliance is right to refuse
@@ -23,9 +26,11 @@ type Auth struct {
 	// without asking the user what their instance is configured for.
 	DiscoveryPath string `yaml:"discoveryPath"`
 
-	SSO      *SSOFlow      `yaml:"sso"`
-	Password *PasswordFlow `yaml:"password"`
-	Device   *DeviceFlow   `yaml:"device"`
+	// Flows and Env are grouped rather than listed so this struct stays under
+	// filet's field cap as kinds are added. Both are inlined: the YAML is flat
+	// and unchanged, and Go promotes the fields, so a.SSO and a.EnvToken still
+	// read the way they always did.
+	Flows `yaml:",inline"`
 
 	// IdentityPath is fetched after login purely to name who signed in.
 	IdentityPath string `yaml:"identityPath"`
@@ -39,14 +44,31 @@ type Auth struct {
 	Transport  string `yaml:"transport"`
 	CookieName string `yaml:"cookieName"`
 
-	EnvToken string `yaml:"envToken"`
-	EnvURL   string `yaml:"envUrl"`
+	Env `yaml:",inline"`
 
 	Store *Store `yaml:"store"`
 
 	// Note explains a tool that cannot be logged into, so facile can say why
 	// instead of pretending the command did something.
 	Note string `yaml:"note"`
+}
+
+// Flows are the four handshakes a tool can declare. A tool may declare several
+// — a device sign-in keeps its loopback flow, and both keep the tool's own
+// password endpoint — and Kind says which one facile prefers.
+type Flows struct {
+	SSO        *SSOFlow        `yaml:"sso"`
+	OIDCDevice *OIDCDeviceFlow `yaml:"oidcDevice"`
+	Password   *PasswordFlow   `yaml:"password"`
+	Device     *DeviceFlow     `yaml:"device"`
+}
+
+// Env is the pair of environment variables that override what facile stored.
+// EnvToken matters at logout: a variable still set keeps working, and the user
+// would otherwise think the logout failed.
+type Env struct {
+	EnvToken string `yaml:"envToken"`
+	EnvURL   string `yaml:"envUrl"`
 }
 
 // SSOFlow is the browser round trip. The callback carries either the token
@@ -68,6 +90,40 @@ type SSOFlow struct {
 	// RequireState is false only where the server does not echo the nonce back
 	// yet. It is a defect to be fixed server-side, never a setting to prefer.
 	RequireState bool `yaml:"requireState"`
+}
+
+// OIDCDeviceFlow is RFC 8628 run against the suite's identity provider rather
+// than against the tool. It exists because the loopback flow assumes the
+// browser is on the machine that started the login: when it is not, the
+// provider redirects the wrong machine's browser to 127.0.0.1 and the login
+// hangs until the code expires. Here nothing is redirected anywhere — the user
+// carries a short code to whatever device has the browser.
+//
+// A tool declaring this keeps its SSO block. The loopback flow stays the
+// same-machine path and is what runs when the provider does not advertise the
+// grant, so a catalog entry can name the device flow before the provider
+// serves it.
+type OIDCDeviceFlow struct {
+	// Issuer is the OIDC issuer. Endpoints come from its discovery document,
+	// never from paths assembled here: on this provider a per-application
+	// discovery path answers 200 with the single-page app's HTML, which is a
+	// false positive that has already misled two investigations.
+	Issuer string `yaml:"issuer"`
+
+	// ClientID names a public client. A CLI ships on the user's machine and
+	// cannot keep a secret, so there is none here and none is sent.
+	ClientID string `yaml:"clientId"`
+
+	// Scopes are space separated, as OAuth spells them. profile and email are
+	// what the app needs to name the account behind the token.
+	Scopes string `yaml:"scopes"`
+
+	// ExchangePath trades the provider's access token for the tool's own
+	// credential, because what the tool reads is its own session and not the
+	// provider's — the same reason the loopback flow exchanges a code rather
+	// than storing it. The prefix mirrors this tool's SSO exchange path: an
+	// app serving its API under /api serves both under /api.
+	ExchangePath string `yaml:"exchangePath"`
 }
 
 // PasswordFlow posts credentials to the tool's own API.
@@ -121,13 +177,20 @@ func (t Tool) Note() string {
 }
 
 // EnvToken is the environment variable that overrides the stored credential.
-// It matters at logout: a variable still set keeps working, and the user would
-// otherwise think the logout failed.
 func (t Tool) EnvToken() string {
 	if t.Auth == nil {
 		return ""
 	}
 	return t.Auth.EnvToken
+}
+
+// Federates reports whether this tool signs in through the shared identity
+// provider. Those flows run first: the first of them authenticates and the
+// rest complete without the user touching anything, which is only worth
+// anything if they are not queued behind a prompt.
+func (t Tool) Federates() bool {
+	kind := t.AuthKind()
+	return kind == "sso" || kind == "oidc-device"
 }
 
 // AuthKind is the flow this tool needs, or "none".
