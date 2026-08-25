@@ -60,7 +60,7 @@ func Login(tool manifest.Tool, opts Options) (Outcome, error) {
 	cred := credstore.Credential{ServerURL: serverURL, Extra: extras()}
 	outcome := Outcome{ServerURL: serverURL}
 
-	kind, err := chooseFlow(a, found, opts.Session)
+	kind, err := chooseFlow(a, found, opts.Session, serverURL)
 	if err != nil {
 		return outcome, err
 	}

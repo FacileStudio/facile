@@ -1,6 +1,8 @@
 package authflow
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
@@ -15,11 +17,24 @@ type flowCase struct {
 	auth    *manifest.Auth
 	found   discovery
 	session *Session
+	server  string
 	want    string
 	wantErr bool
 }
 
-func flowCases() []flowCase {
+// exchangeServer stands in for the tool. A 404 is the answer from one that has
+// not shipped the endpoint; anything else means it has, whatever it thinks of
+// a probe carrying no token.
+func exchangeServer(t *testing.T, status int) string {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(status)
+	}))
+	t.Cleanup(server.Close)
+	return server.URL
+}
+
+func flowCases(t *testing.T) []flowCase {
 	sso := &manifest.Auth{Kind: "sso", Flows: manifest.Flows{SSO: &manifest.SSOFlow{}}}
 	both := &manifest.Auth{Kind: "sso", Flows: manifest.Flows{
 		SSO:      &manifest.SSOFlow{},
@@ -37,17 +52,20 @@ func flowCases() []flowCase {
 	}}
 
 	offers, refuses := seededSessions()
+	serves := exchangeServer(t, http.StatusBadRequest)
+	absent := exchangeServer(t, http.StatusNotFound)
 
 	return []flowCase{
-		{"an unreachable discovery keeps the declared kind", sso, discovery{}, nil, "sso", false},
-		{"sso_only with no provider is a dead end", sso, discovery{answered: true, ssoOnly: true}, nil, "", true},
-		{"no OIDC falls back to the password endpoint", both, discovery{answered: true}, nil, "password", false},
-		{"an instance with no password needs no prompt", password, discovery{answered: true}, nil, "passwordless", false},
+		{"an unreachable discovery keeps the declared kind", sso, discovery{}, nil, "", "sso", false},
+		{"sso_only with no provider is a dead end", sso, discovery{answered: true, ssoOnly: true}, nil, "", "", true},
+		{"no OIDC falls back to the password endpoint", both, discovery{answered: true}, nil, "", "password", false},
+		{"an instance with no password needs no prompt", password, discovery{answered: true}, nil, "", "passwordless", false},
 		{"an instance with a password asks for it", password,
-			discovery{answered: true, passwordNeeded: true}, nil, "password", false},
-		{"a provider offering RFC 8628 takes the device grant", device, discovery{}, offers, "oidc-device", false},
-		{"a provider without the grant keeps the loopback flow", device, discovery{}, refuses, "sso", false},
-		{"a device kind with no issuer is a catalog bug", noIssuer, discovery{}, refuses, "", true},
+			discovery{answered: true, passwordNeeded: true}, nil, "", "password", false},
+		{"a provider offering RFC 8628 takes the device grant", device, discovery{}, offers, serves, "oidc-device", false},
+		{"a tool without the exchange keeps the loopback flow", device, discovery{}, offers, absent, "sso", false},
+		{"a provider without the grant keeps the loopback flow", device, discovery{}, refuses, absent, "sso", false},
+		{"a device kind with no issuer is a catalog bug", noIssuer, discovery{}, refuses, "", "", true},
 	}
 }
 
@@ -65,9 +83,9 @@ func seededSessions() (offers, refuses *Session) {
 }
 
 func TestChooseFlow(t *testing.T) {
-	for _, c := range flowCases() {
+	for _, c := range flowCases(t) {
 		t.Run(c.name, func(t *testing.T) {
-			got, err := chooseFlow(c.auth, c.found, c.session)
+			got, err := chooseFlow(c.auth, c.found, c.session, c.server)
 			switch {
 			case c.wantErr && err == nil:
 				t.Fatalf("expected a refusal, got %q", got)

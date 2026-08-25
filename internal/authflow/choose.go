@@ -13,13 +13,13 @@ import (
 // provider says it can do. Discovery decides when it answered; when it did
 // not, the catalog's declared kind stands, because an unreachable /auth/config
 // is no reason to refuse to try.
-func chooseFlow(a *manifest.Auth, found discovery, session *Session) (string, error) {
+func chooseFlow(a *manifest.Auth, found discovery, session *Session, serverURL string) (string, error) {
 	switch a.Kind {
 	case "sso":
 		return chooseBrowserFlow(a, found)
 
 	case "oidc-device":
-		return chooseDeviceFlow(a, found, session)
+		return chooseDeviceFlow(a, found, session, serverURL)
 
 	case "password":
 		if a.Password == nil {
@@ -68,7 +68,16 @@ func chooseBrowserFlow(a *manifest.Auth, found discovery) (string, error) {
 // The loopback flow stays the same-machine path and is what runs until the
 // provider advertises the grant, which is why moving a tool onto this kind
 // changes nothing for anybody on the day it lands.
-func chooseDeviceFlow(a *manifest.Auth, found discovery, session *Session) (string, error) {
+//
+// Both halves are asked, and both before the grant runs. The provider offering
+// RFC 8628 says nothing about whether this tool can trade the resulting token
+// for its own credential, and the tools gain that endpoint one deployment at a
+// time. Asking only the provider gets the order wrong in a way that is worse
+// than not asking at all: the human reads a code off one screen, types it into
+// another, waits for the poll to clear — and is then handed the loopback login
+// anyway, which is the flow that cannot work when the browser is elsewhere. A
+// ceremony that changes nothing is worse than no ceremony.
+func chooseDeviceFlow(a *manifest.Auth, found discovery, session *Session, serverURL string) (string, error) {
 	if a.OIDCDevice == nil || a.OIDCDevice.Issuer == "" {
 		return "", fmt.Errorf("the catalog declares a device sign-in with no issuer — report it against the facile catalog")
 	}
@@ -76,7 +85,7 @@ func chooseDeviceFlow(a *manifest.Auth, found discovery, session *Session) (stri
 	if err != nil || chosen != "sso" {
 		return chosen, err
 	}
-	if session.offersDeviceGrant(a.OIDCDevice.Issuer) {
+	if session.offersDeviceGrant(a.OIDCDevice.Issuer) && servesExchange(serverURL+a.OIDCDevice.ExchangePath) {
 		return "oidc-device", nil
 	}
 	return "sso", nil

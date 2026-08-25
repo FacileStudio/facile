@@ -116,6 +116,28 @@ func announceCode(auth deviceAuth, opts Options) {
 	ui.Step("Waiting for approval — the code lasts %s", auth.expires.Round(time.Second))
 }
 
+// servesExchange reports whether this tool can trade a provider token for its
+// own credential, and it is asked before the grant runs rather than after.
+//
+// Order is the whole point. Discovering the tool cannot do it only once the
+// human has read a code off one screen and typed it into another makes the
+// device flow a ceremony that buys nothing: they still land on the loopback
+// login afterwards, which is the flow that cannot work when the browser is on
+// a different machine. Asking first means a tool that has not shipped the
+// endpoint goes straight to what does work, and a run where no tool has it
+// never prints a code at all.
+//
+// The probe is a POST with no token. A route that exists rejects that on its
+// merits — 400, 401, whatever it decides — and a route that does not exist
+// answers 404. Only the second is an answer about the endpoint rather than
+// about the request, so only the second is read. An unreachable server is not
+// a 404 either: that is the tool's own problem and the login should fail
+// against the real flow with the real error, not be quietly rerouted.
+func servesExchange(target string) bool {
+	res, err := post(target, map[string]string{})
+	return err == nil && res.status != http.StatusNotFound
+}
+
 // oidcDeviceLogin signs in at the provider once and trades the result for this
 // tool's own credential.
 func oidcDeviceLogin(a *manifest.Auth, serverURL string, opts Options) (string, error) {
