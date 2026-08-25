@@ -138,6 +138,14 @@ func TestDeviceGrantPollsUntilApproved(t *testing.T) {
 // slow_down is not advice. A client that keeps its interval is the one the
 // provider rate-limits, and the increase is cumulative: two of them are ten
 // seconds, not five.
+//
+// Each gap is measured against the nominal schedule rather than against the
+// gap before it. Comparing them to each other looks tighter and is not: both
+// carry their own scheduler jitter, so `second >= first+step` only holds when
+// the second sleep was delayed at least as much as the first, which on a busy
+// machine is a coin flip. It failed here by fourteen microseconds. Cumulative
+// backoff is still what is being asserted — no backoff leaves the first gap
+// under one step, and a non-cumulative one leaves the second under two.
 func TestDeviceGrantBacksOffOnSlowDown(t *testing.T) {
 	provider, issuer := newProvider(t, true, "slow_down", "slow_down", "ok")
 	ep, err := discoverIssuer(issuer)
@@ -157,7 +165,7 @@ func TestDeviceGrantBacksOffOnSlowDown(t *testing.T) {
 
 	first := provider.at[1].Sub(provider.at[0])
 	second := provider.at[2].Sub(provider.at[1])
-	if first < step || second < first+step {
+	if first < step || second < 2*step {
 		t.Fatalf("gaps were %s then %s; each slow_down must add %s to the last interval", first, second, step)
 	}
 }

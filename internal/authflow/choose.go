@@ -1,9 +1,11 @@
 package authflow
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/FacileStudio/facile/internal/manifest"
+	"github.com/FacileStudio/facile/internal/ui"
 )
 
 // chooseFlow picks between the flows a tool declares, from the catalog entry,
@@ -88,7 +90,12 @@ func runFlow(kind string, tool manifest.Tool, serverURL string, opts Options) (s
 	case "sso":
 		return ssoLogin(a, serverURL, opts)
 	case "oidc-device":
-		return oidcDeviceLogin(a, serverURL, opts)
+		token, err := oidcDeviceLogin(a, serverURL, opts)
+		if errors.Is(err, errExchangeUnsupported) && a.SSO != nil {
+			ui.Hint("this one has not learned the shared sign-in yet — using its own browser login")
+			return ssoLogin(a, serverURL, opts)
+		}
+		return token, err
 	case "password":
 		return passwordLogin(a, serverURL)
 	case "device":

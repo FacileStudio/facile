@@ -1,6 +1,7 @@
 package authflow
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -130,6 +131,14 @@ func oidcDeviceLogin(a *manifest.Auth, serverURL string, opts Options) (string, 
 	return exchangeDeviceToken(serverURL+flow.ExchangePath, token)
 }
 
+// errExchangeUnsupported means this tool has not learned the device sign-in
+// yet. It is a sentinel rather than prose because it is the one refusal the
+// caller can do something about: the provider offering the grant says nothing
+// about whether a given tool can trade a token for its own credential, and
+// the tools gain that endpoint one deployment at a time. Anything else from
+// the exchange is a real failure and stays one.
+var errExchangeUnsupported = errors.New("this server does not accept a device sign-in yet")
+
 // exchangeDeviceToken trades the provider's access token for the tool's own
 // credential, for the same reason the loopback flow exchanges a code rather
 // than storing it: what the tool reads is its own session, and writing the
@@ -145,8 +154,7 @@ func exchangeDeviceToken(target, accessToken string) (string, error) {
 
 	switch {
 	case res.status == http.StatusNotFound:
-		return "", fmt.Errorf("this server does not accept a device sign-in yet (404 on %s) — "+
-			"sign in with a browser on this machine, or ask whoever runs it to update it", target)
+		return "", fmt.Errorf("%w (404 on %s)", errExchangeUnsupported, target)
 	case !res.ok():
 		return "", fmt.Errorf("the server refused the provider's token (%d) — run `facile login` again", res.status)
 	}

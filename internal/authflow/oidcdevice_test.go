@@ -2,6 +2,7 @@ package authflow
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -91,6 +92,12 @@ func TestDeviceSignInStoresTheToolsOwnToken(t *testing.T) {
 // The exchange endpoint is the piece the apps have yet to ship. A 404 there is
 // expected for now and has to read as "not yet", not as a refused sign-in.
 //
+// It is matched as a sentinel and not as prose because runFlow keys the
+// fallback to the tool's own browser login on exactly this error. Asserting the
+// message would let someone reword it, lose the wrapping, and turn every
+// not-yet-migrated tool from a working login into a failed one — with the
+// tests still green.
+//
 // The session is seeded rather than granted: this is about the second half of
 // the flow, and nobody should wait out a polling interval to reach it.
 func TestDeviceSignInSaysSoWhenTheServerHasNoExchangeYet(t *testing.T) {
@@ -105,8 +112,8 @@ func TestDeviceSignInSaysSoWhenTheServerHasNoExchangeYet(t *testing.T) {
 	session := &Session{tokens: map[string]string{issuer: "provider-access-token"}}
 
 	_, err := oidcDeviceLogin(auth, serverURL, Options{NoBrowser: true, Session: session})
-	if err == nil || !strings.Contains(err.Error(), "does not accept a device sign-in yet") {
-		t.Fatalf("a 404 exchange gave %v, want it named as not yet available", err)
+	if !errors.Is(err, errExchangeUnsupported) {
+		t.Fatalf("a 404 exchange gave %v, want it to wrap errExchangeUnsupported", err)
 	}
 }
 
