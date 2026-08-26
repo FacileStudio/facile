@@ -8,7 +8,7 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While on
 Entries before v0.6.0 were reconstructed from git history on 2026-08-24, so they
 record what shipped rather than what was written down at the time.
 
-## [Unreleased]
+## [0.10.0] — 2026-08-26
 
 ### Added
 
@@ -33,14 +33,34 @@ record what shipped rather than what was written down at the time.
   is real on this provider, and a per-application path answers 200 with the
   single-page app's HTML.
 
+- **A tool is asked whether it can trade a token before one is minted.** Two
+  things must hold for the device flow to be worth running: the provider offers
+  the grant, and the tool serves an exchange endpoint that turns the provider's
+  token into the tool's own credential. Both are checked before a code is
+  printed.
+
+  Order is the whole point. Asking only the provider meant a run printed a
+  code, waited while somebody read it off one screen and typed it into another,
+  cleared the poll, and only then found that the tool had no exchange endpoint.
+  It then handed over the loopback login anyway, which is the flow that cannot
+  work when the browser is on a different machine.
+
+  The probe is a POST carrying no token. A route that exists refuses that on
+  its merits, and a route that does not exist answers 404, so only a 404 is an
+  answer about the endpoint rather than about the request. An unreachable
+  server is not a 404 and is not rerouted: that failure belongs to the tool's
+  own flow, with its own error. A 404 from the exchange itself stays a sentinel
+  as well, so a tool whose endpoint goes away between the probe and the trade
+  falls back instead of failing the login.
+
 ### Changed
 
 - sablier, nuage, casier, journal, courrier and mycelium move from `kind: sso`
   to `kind: oidc-device` in the catalog. Each keeps its `sso` block: the
-  loopback flow is the same-machine fast path, and it is also what runs until
-  the provider lists the device grant in `grant_types_supported`. facile asks
-  rather than assumes, so the change is inert until the server side is ready
-  and needs no second release to switch on.
+  loopback flow is the same-machine fast path, and it is what still runs for a
+  tool that has not shipped the exchange endpoint. Tools cross over one
+  deployment at a time, with no flag day, nothing to coordinate, and no second
+  facile release to switch it on.
 
 ## [0.9.1] — 2026-08-24
 
@@ -250,7 +270,8 @@ record what shipped rather than what was written down at the time.
 - First release. One installer for the whole suite, with a bootstrap script,
   tests and CI.
 
-[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/FacileStudio/facile/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/FacileStudio/facile/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/FacileStudio/facile/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/FacileStudio/facile/compare/v0.7.0...v0.8.0
