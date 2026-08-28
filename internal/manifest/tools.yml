@@ -337,6 +337,57 @@ tools:
         courrier.facile.studio runs exactly that way. The config file is YAML per
         CLI-STANDARD 6.1 and carries a default_account key beside the token, so
         preserve is required on write.
+  - name: sonde
+    summary: Uptime monitoring — heartbeats, monitors, incidents
+    repo: FacileStudio/sonde-cli
+    branch: main
+    bin: sonde
+    build: go
+    srcSubdir: .
+    asset: sonde-cli
+    goVersionVar: github.com/FacileStudio/sonde-cli/cmd.version
+    auth:
+      kind: oidc-device
+      discoveryPath: /api/auth/config
+      transport: bearer
+      envToken: SONDE_TOKEN
+      envUrl: SONDE_SERVER_URL
+      oidcDevice:
+        issuer: https://sso.facile.studio
+        clientId: facile-cli
+        scopes: openid profile email
+        exchangePath: /api/auth/oidc/device/exchange
+      sso:
+        startPath: /api/auth/oidc
+        portParam: port
+        stateParam: cli_state
+        extraParams: flow=cli
+        callbackWith: code
+        callbackPath: /
+        exchangePath: /api/auth/oidc/exchange
+        requireState: true
+      password:
+        path: /api/auth/login
+        withEmail: true
+        tokenField: token
+      store:
+        kind: file
+        path: ${xdgConfig}/sonde/config.yml
+        format: yaml
+        tokenField: token
+        urlField: url
+        mode: 0o600
+        dirMode: 0o700
+        preserve: true
+      note: >-
+        Sonde mounts porte under /api, so the login flows are Journal's and
+        Courrier's. There is no defaultServerUrl on purpose: every Sonde is
+        somebody's own instance and there is no shared one to guess. The CLI
+        drives the same two flows itself, so `facile login sonde` and
+        `sonde login` reach the same endpoints. Its own /api/auth/me nests the
+        account under a "user" key, which identityPath cannot read, so the
+        login names the instance rather than the person.
+
   - name: mycelium
     summary: Shared agent memory
     repo: FacileStudio/Mycelium
