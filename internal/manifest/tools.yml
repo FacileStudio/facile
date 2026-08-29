@@ -346,6 +346,7 @@ tools:
     srcSubdir: .
     asset: sonde-cli
     goVersionVar: github.com/FacileStudio/sonde-cli/cmd.version
+    skill: sonde
     auth:
       kind: oidc-device
       discoveryPath: /api/auth/config
