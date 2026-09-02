@@ -8,6 +8,20 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While on
 Entries before v0.6.0 were reconstructed from git history on 2026-08-24, so they
 record what shipped rather than what was written down at the time.
 
+## [Unreleased]
+
+### Changed
+
+- **The catalog is now refreshed on every command that reads it.** `catalog()`
+  calls `manifest.Refresh` before returning, so `facile list`, `facile update`,
+  `facile install`, `facile login`, and `facile doctor` all see a tool added
+  upstream on the same run. A network failure is not fatal: `Load` falls back
+  to the embedded copy.
+
+- **`facile update --catalog` is removed.** It refreshed the catalog and the
+  version cache and changed nothing else; with the catalog refreshed on every
+  run, the flag was a way to reach for a command that no longer had a job.
+
 ## [0.10.0] — 2026-08-26
 
 ### Added

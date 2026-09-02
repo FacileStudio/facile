@@ -35,8 +35,10 @@ var listCmd = &cobra.Command{
 	Short: "List the Facile tools and what is installed",
 	Long: "Show every tool in the catalog, the version installed, and whether a " +
 		"newer release is published.\n\n" +
-		"The published versions come from a cache refreshed at most once a day, so " +
-		"listing stays instant and works offline. Pass --check to resolve them now.",
+		"The catalog is refreshed from the remote on every run, so a tool added " +
+		"upstream shows up immediately. The published versions come from a cache " +
+		"refreshed at most once a day, so listing stays instant and works offline. " +
+		"Pass --check to resolve them now.",
 	RunE: func(_ *cobra.Command, _ []string) error {
 		m := catalog()
 		if flagQuiet {

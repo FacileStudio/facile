@@ -15,8 +15,7 @@ import (
 )
 
 var (
-	flagCatalogOnly bool
-	flagForce       bool
+	flagForce bool
 )
 
 var updateCmd = &cobra.Command{
@@ -27,30 +26,10 @@ var updateCmd = &cobra.Command{
 		"already reports the latest published version is left alone; pass --force " +
 		"to reinstall it anyway.",
 	RunE: func(_ *cobra.Command, args []string) error {
-		if flagCatalogOnly {
-			m, err := manifest.Refresh(store.CatalogPath())
-			if err != nil {
-				return fmt.Errorf("cannot reach the tool catalog — %s", err)
-			}
-			// Refresh the version cache too, so the next `facile list` is
-			// current. The catalog is always correct; the version cache can
-			// trail by up to 24h otherwise.
-			repos := make([]string, 0, len(m.Tools))
-			for _, tool := range m.Tools {
-				repos = append(repos, tool.Repo)
-			}
-			resolved := installer.Latest(store.LatestPath(), repos, true)
-			plural := "tools"
-			if len(resolved) == 1 {
-				plural = "tool"
-			}
-			ui.Success("Catalog refreshed, %d %s", len(m.Tools), plural)
-			return nil
-		}
-
-		if _, err := manifest.Refresh(store.CatalogPath()); err != nil {
-			ui.Warn("could not refresh the tool catalog, using the local copy")
-		}
+		// catalog() refreshes the catalog before reading it, so a tool added
+		// upstream since the last run is selectable now rather than one run
+		// later. The version cache is refreshed below for the targets that
+		// matter; the rest can wait for the next `facile list`.
 		wantSelf, rest, named := splitSelf(args)
 		targets, err := updateTargets(rest, named)
 		if err != nil {
@@ -87,7 +66,6 @@ var updateCmd = &cobra.Command{
 
 func init() {
 	updateCmd.Flags().BoolVar(&flagAll, "all", false, "Update every tool in the catalog")
-	updateCmd.Flags().BoolVar(&flagCatalogOnly, "catalog", false, "Refresh the tool catalog and change nothing else")
 	updateCmd.Flags().BoolVar(&flagNoSkill, "no-skill", false, "Skip AI agent skill registration")
 	updateCmd.Flags().BoolVar(&flagForce, "force", false, "Reinstall even when already at the latest release")
 	rootCmd.AddCommand(updateCmd)

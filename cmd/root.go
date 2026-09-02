@@ -56,6 +56,12 @@ func binDir() string {
 }
 
 func catalog() *manifest.Manifest {
+	// Every command that reads the catalog refreshes it first, so a tool added
+	// upstream is visible on the same run rather than after a manual refresh.
+	// A network failure is not fatal: Load falls back to the embedded copy.
+	if m, err := manifest.Refresh(store.CatalogPath()); err == nil {
+		return m
+	}
 	return manifest.Load(store.CatalogPath())
 }
 

@@ -115,7 +115,7 @@ func installedWithAccounts() []manifest.Tool {
 func pickLogins() ([]manifest.Tool, error) {
 	candidates := withAccounts()
 	if len(candidates) == 0 {
-		return nil, fmt.Errorf("no tool in the catalog has a login flow — refresh the catalog with `facile update --catalog`")
+		return nil, fmt.Errorf("no tool in the catalog has a login flow — refresh the catalog with `facile list`")
 	}
 
 	options := make([]huh.Option[string], 0, len(candidates))
