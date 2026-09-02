@@ -492,3 +492,42 @@ tools:
         Douane scans local lockfiles and queries osv.dev plus the KEV and EPSS
         feeds directly. There is no suite server to log into and no credential
         to store; its only network traffic is advisory lookups.
+
+  - name: agenda
+    summary: Calendar and CalDAV client
+    repo: FacileStudio/agenda-cli
+    branch: main
+    bin: agenda
+    build: go
+    srcSubdir: .
+    asset: agenda
+    goVersionVar: github.com/FacileStudio/agenda-cli/cmd.version
+    skill: agenda
+    auth:
+      kind: oidc-device
+      discoveryPath: /auth/config
+      transport: bearer
+      envToken: AGENDA_TOKEN
+      envUrl: AGENDA_SERVER_URL
+      oidcDevice:
+        issuer: https://sso.facile.studio
+        clientId: facile-cli
+        scopes: openid profile email
+        exchangePath: /auth/oidc/device/exchange
+      sso:
+        startPath: /auth/oidc
+        portParam: port
+        stateParam: cli_state
+        extraParams: flow=cli
+        callbackWith: code
+        callbackPath: /
+        exchangePath: /auth/oidc/exchange
+        requireState: true
+      store:
+        kind: file
+        path: ${userConfig}/agenda/config.yml
+        format: yaml
+        tokenField: token
+        urlField: server_url
+        mode: 0o600
+        preserve: true
