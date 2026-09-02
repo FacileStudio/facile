@@ -32,7 +32,19 @@ var updateCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("cannot reach the tool catalog — %s", err)
 			}
-			ui.Success("Catalog refreshed, %d tools", len(m.Tools))
+			// Refresh the version cache too, so the next `facile list` is
+			// current. The catalog is always correct; the version cache can
+			// trail by up to 24h otherwise.
+			repos := make([]string, 0, len(m.Tools))
+			for _, tool := range m.Tools {
+				repos = append(repos, tool.Repo)
+			}
+			resolved := installer.Latest(store.LatestPath(), repos, true)
+			plural := "tools"
+			if len(resolved) == 1 {
+				plural = "tool"
+			}
+			ui.Success("Catalog refreshed, %d %s", len(m.Tools), plural)
 			return nil
 		}
 
@@ -49,9 +61,13 @@ var updateCmd = &cobra.Command{
 			return nil
 		}
 
+		// Resolve the latest published tags and write them to the version cache,
+		// so `facile list` shows the freshest info without waiting for the 24h TTL.
+		_ = installer.Latest(store.LatestPath(), allRepos(targets), !flagForce)
+
 		tools := targets
 		if !flagForce {
-			tools = stale(targets)
+			tools = stale(targets, store.LatestPath())
 		}
 		var failure error
 		switch {
@@ -86,21 +102,38 @@ var latestTagFn = installer.LatestTag
 // redirect; reinstalling costs an archive, a checksums file, and a rewrite of
 // every agent skill on the machine, for a byte-identical binary.
 //
+// Resolved tags are written back to the version cache as a side effect, so
+// `facile list` stays up to date after an update check without waiting for the
+// 24h cache TTL.
+//
 // The checks run concurrently, because ten sequential redirects cost about
 // eight seconds on a run that installs nothing. Results land in a slice indexed
 // by position rather than a channel, so the report stays in catalog order.
-func stale(tools []manifest.Tool) []manifest.Tool {
+func stale(tools []manifest.Tool, cachePath string) []manifest.Tool {
 	dir := binDir()
 	current := make([]string, len(tools))
+	resolved := make(map[string]string, len(tools))
+	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for i, tool := range tools {
 		wg.Go(func() {
 			if have, ok := installer.Installed(dir, tool.Bin); ok && upToDate(have, tool) {
 				current[i] = have
 			}
+			if tool.Repo != "" {
+				if tag, err := latestTagFn(tool.Repo); err == nil {
+					mu.Lock()
+					resolved[tool.Repo] = tag
+					mu.Unlock()
+				}
+			}
 		})
 	}
 	wg.Wait()
+
+	if cachePath != "" && len(resolved) > 0 {
+		installer.WriteLatest(cachePath, resolved)
+	}
 
 	keep := make([]manifest.Tool, 0, len(tools))
 	for i, tool := range tools {
@@ -224,4 +257,13 @@ func unknownTool(name string, m *manifest.Manifest) error {
 			"`facile update facile` replaces the running binary in place")
 	}
 	return fmt.Errorf("unknown tool: %s — run `facile list` to see the catalog", name)
+}
+
+// allRepos collects every repository the tools belong to.
+func allRepos(tools []manifest.Tool) []string {
+	repos := make([]string, 0, len(tools))
+	for _, tool := range tools {
+		repos = append(repos, tool.Repo)
+	}
+	return repos
 }

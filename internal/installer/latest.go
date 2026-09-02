@@ -71,6 +71,29 @@ func covers(cached map[string]string, repos []string) bool {
 	return true
 }
 
+// ReadLatest reads the on-disk cache of the latest published tag per repository.
+// It is the caller's responsibility to not depend on the returned data being
+// current — the cache is advisory, and stale entries are indistinguishable from
+// correct ones.
+func ReadLatest(path string) map[string]string {
+	return readLatest(path)
+}
+
+// WriteLatest merges tags into the on-disk cache and writes it back. The merged
+// map includes every entry from the existing cache plus the new tags, so a
+// partial update never drops entries from a different caller.
+func WriteLatest(path string, tags map[string]string) {
+	cached := readLatest(path)
+	merged := make(map[string]string, len(cached)+len(tags))
+	for repo, tag := range cached {
+		merged[repo] = tag
+	}
+	for repo, tag := range tags {
+		merged[repo] = tag
+	}
+	writeLatest(path, merged)
+}
+
 func readLatest(path string) map[string]string {
 	raw, err := os.ReadFile(path)
 	if err != nil {

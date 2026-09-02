@@ -79,7 +79,7 @@ func TestStaleKeepsTheOutdatedToolsInCatalogOrder(t *testing.T) {
 	}
 
 	var got []string
-	for _, tool := range stale(tools) {
+	for _, tool := range stale(tools, "") {
 		got = append(got, tool.Name)
 	}
 	want := []string{"sablier", "nuage"}
