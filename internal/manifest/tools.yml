@@ -496,7 +496,7 @@ tools:
   - name: agenda
     summary: Calendar and CalDAV client
     repo: FacileStudio/agenda-cli
-    branch: main
+    version: v0.2.0
     bin: agenda
     build: go
     srcSubdir: .
