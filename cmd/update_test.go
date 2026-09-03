@@ -29,7 +29,7 @@ func TestUpToDateSkipsOnlyAnExactVersionMatch(t *testing.T) {
 		{"a newer binary is not up to date either", "opus 0.3.0", "v0.2.0", nil, false},
 		{"an unreadable tag reinstalls rather than guesses", "opus 0.1.0", "", fmt.Errorf("404"), false},
 		{"a tool that is not installed is not up to date", "", "v0.1.0", nil, false},
-		{"a version line facile cannot parse reinstalls", "opus version 0.1.0", "v0.1.0", nil, false},
+		{"a version line with 'version' keyword now parses correctly", "opus version 0.1.0", "v0.1.0", nil, true},
 	}
 
 	for _, tc := range cases {

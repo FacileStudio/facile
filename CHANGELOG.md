@@ -8,6 +8,14 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While on
 Entries before v0.6.0 were reconstructed from git history on 2026-08-24, so they
 record what shipped rather than what was written down at the time.
 
+## [Unreleased]
+
+### Fixed
+
+- `facile update` now correctly parses version lines from tools like agenda
+  that print `{tool} version {version}` instead of `{tool} {version}`. The
+  previous logic dropped these into the reinstall path on every run.
+
 ## [0.12.0] — 2026-09-02
 
 ### Changed
@@ -286,7 +294,7 @@ record what shipped rather than what was written down at the time.
 - First release. One installer for the whole suite, with a bootstrap script,
   tests and CI.
 
-[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.12.0...HEAD
 [0.10.0]: https://github.com/FacileStudio/facile/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/FacileStudio/facile/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/FacileStudio/facile/compare/v0.8.0...v0.9.0

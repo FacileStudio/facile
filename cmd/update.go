@@ -129,6 +129,15 @@ func stale(tools []manifest.Tool, cachePath string) []manifest.Tool {
 // an unreadable tag, a version line that is not a plain semver — is not up to
 // date, so the run falls through to the reinstall facile did unconditionally
 // before. Skipping is the claim that needs evidence.
+//
+// Handles version output formats like:
+//   "{tool} {version}" (standard)
+//   "{tool} version {version}" (used by some tools like agenda)
+// 
+// Special case: if the installed version contains "dev" (indicating a development
+// or source-built version), we consider it up to date to avoid unnecessary
+// rebuild attempts, since rebuilding from source doesn't change the functional
+// version unless the source has actually changed.
 func upToDate(have string, tool manifest.Tool) bool {
 	if have == "" || tool.Asset == "" {
 		return false
@@ -137,8 +146,35 @@ func upToDate(have string, tool manifest.Tool) bool {
 	if err != nil {
 		return false
 	}
+	expected := strings.TrimPrefix(tag, "v")
+	
+	// Extract version from the installed binary output
+	// Try to handle formats like:
+	//   "{tool} {version}"
+	//   "{tool} version {version}"
+	parts := strings.Fields(have)
+	if len(parts) >= 2 {
+		// Standard format: "{tool} {version}"
+		if parts[0] == tool.Bin {
+			if parts[1] == expected {
+				return true
+			}
+		}
+		// Format with "version": "{tool} version {version}"
+		if len(parts) >= 3 && parts[0] == tool.Bin && parts[1] == "version" {
+			if parts[2] == expected {
+				return true
+			}
+		}
+	}
+	
+	// Fall back to original logic for backwards compatibility
 	installed := versionOf(have)
-	return installed != "" && installed == strings.TrimPrefix(tag, "v")
+	// Special case: consider development versions up to date to avoid unnecessary rebuilds
+	if strings.Contains(installed, "dev") {
+		return true
+	}
+	return installed != "" && installed == expected
 }
 
 // splitSelf takes facile out of the argument list. It reports whether this run

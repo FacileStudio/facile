@@ -158,8 +158,14 @@ func stateOf(e entry) string {
 	}
 }
 
-// versionOf keeps the semver out of a "<bin> <semver>" line.
+// versionOf returns the version part of a line like "{tool} {version}" or
+// "{tool} version {version}". It returns everything after the first space,
+// unless the second word is "version", in which case it returns the third word.
 func versionOf(line string) string {
+	parts := strings.Fields(line)
+	if len(parts) >= 3 && parts[1] == "version" {
+		return parts[2]
+	}
 	if _, ver, found := strings.Cut(line, " "); found {
 		return ver
 	}
