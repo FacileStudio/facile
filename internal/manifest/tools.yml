@@ -530,3 +530,20 @@ tools:
         urlField: server_url
         mode: 0o600
         preserve: true
+
+  - name: boite
+    summary: Development sandbox manager
+    repo: FacileStudio/boite
+    branch: master
+    bin: boite
+    build: go
+    srcSubdir: .
+    asset: boite
+    goVersionVar: github.com/FacileStudio/boite/cmd.Version
+    requires:
+      - multipass
+    auth:
+      kind: none
+      note: >-
+        Boite manages local virtual machines via Multipass. It runs entirely
+        locally and has no suite server to log into and no credential to store.
