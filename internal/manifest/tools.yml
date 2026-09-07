@@ -541,7 +541,7 @@ tools:
     asset: boite
     goVersionVar: github.com/FacileStudio/boite/cmd.Version
     requires:
-      - qemu
+      - qemu-system-x86_64
     auth:
       kind: none
       note: >-
