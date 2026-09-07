@@ -541,9 +541,9 @@ tools:
     asset: boite
     goVersionVar: github.com/FacileStudio/boite/cmd.Version
     requires:
-      - multipass
+      - qemu
     auth:
       kind: none
       note: >-
-        Boite manages local virtual machines via Multipass. It runs entirely
+        Boite manages local virtual machines via QEMU/KVM. It runs entirely
         locally and has no suite server to log into and no credential to store.
