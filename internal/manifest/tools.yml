@@ -493,6 +493,23 @@ tools:
         feeds directly. There is no suite server to log into and no credential
         to store; its only network traffic is advisory lookups.
 
+  - name: filet
+    summary: Code-quality checker enforcing the Facile team guidelines
+    repo: FacileStudio/filet
+    branch: main
+    bin: filet
+    build: go
+    srcSubdir: .
+    asset: filet
+    goVersionVar: github.com/FacileStudio/filet/cmd.version
+    skill: filet
+    auth:
+      kind: none
+      note: >-
+        filet is a static analysis tool that runs entirely offline and has no
+        account. It reads the project's .filet.yml configuration and reports
+        violations of the Facile team guidelines.
+
   - name: agenda
     summary: Calendar and CalDAV client
     repo: FacileStudio/agenda-cli
