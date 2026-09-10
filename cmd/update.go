@@ -133,7 +133,7 @@ func stale(tools []manifest.Tool, cachePath string) []manifest.Tool {
 // Handles version output formats like:
 //   "{tool} {version}" (standard)
 //   "{tool} version {version}" (used by some tools like agenda)
-// 
+//
 // Special case: if the installed version contains "dev" (indicating a development
 // or source-built version), we consider it up to date to avoid unnecessary
 // rebuild attempts, since rebuilding from source doesn't change the functional
@@ -147,30 +147,30 @@ func upToDate(have string, tool manifest.Tool) bool {
 		return false
 	}
 	expected := strings.TrimPrefix(tag, "v")
-	
-	// Extract version from the installed binary output
-	// Try to handle formats like:
-	//   "{tool} {version}"
-	//   "{tool} version {version}"
+
+
+
+
+
 	parts := strings.Fields(have)
 	if len(parts) >= 2 {
-		// Standard format: "{tool} {version}"
+
 		if parts[0] == tool.Bin {
 			if parts[1] == expected {
 				return true
 			}
 		}
-		// Format with "version": "{tool} version {version}"
+
 		if len(parts) >= 3 && parts[0] == tool.Bin && parts[1] == "version" {
 			if parts[2] == expected {
 				return true
 			}
 		}
 	}
-	
-	// Fall back to original logic for backwards compatibility
+
+
 	installed := versionOf(have)
-	// Special case: consider development versions up to date to avoid unnecessary rebuilds
+
 	if strings.Contains(installed, "dev") {
 		return true
 	}
@@ -217,9 +217,9 @@ func updateTargets(args []string, named bool) ([]manifest.Tool, error) {
 func updateSelf() error {
 	dir, ok := selfDir()
 	if !ok {
-		// Resolve before mentioning brew. Returning early left the version cache
-		// untouched, so a Homebrew user was told to upgrade on every run and the
-		// listing kept naming whichever tag the cache happened to hold.
+
+
+
 		if _, behind := selfOutdated(selfLatest(true)); !behind {
 			ui.Success("facile %s is up to date", version)
 			return nil

@@ -115,10 +115,10 @@ func awaitCallback(listener net.Listener, flow *manifest.SSOFlow, state string) 
 			page(w, http.StatusNotFound, "Not the login redirect.")
 			return
 		}
-		// The nonce goes out under the catalog's StateParam and comes back as
-		// plain `state`: casier sends `cli_state` and its server echoes `state`.
-		// The asymmetry is real, matches casier's own parser, and is not a bug
-		// to tidy away.
+
+
+
+
 		if flow.RequireState && r.URL.Query().Get("state") != state {
 			page(w, http.StatusBadRequest, "The callback did not match this login attempt. Run the command again.")
 			done <- outcome{err: fmt.Errorf("the sign-in callback did not match this login attempt — run `facile login` again")}

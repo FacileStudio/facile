@@ -168,8 +168,8 @@ func fileFields(s *manifest.Store, cred Credential) []field {
 func writeKeychain(s *manifest.Store, cred Credential) (Result, error) {
 	var result Result
 
-	// The URL half of a split store goes first: if the keychain then refuses,
-	// the user still has a configured server and only a token to sort out.
+
+
 	if s.Path != "" {
 		path, err := writeFile(s, fileFields(&manifest.Store{
 			URLField: s.URLField,

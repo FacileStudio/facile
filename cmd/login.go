@@ -143,8 +143,8 @@ func loginAll(tools []manifest.Tool) error {
 
 	var failed []string
 	for _, tool := range tools {
-		// A tool that cannot be logged into is information, not a failure:
-		// "capsule needs no login" is the answer to the question asked.
+
+
 		if !tool.NeedsLogin() {
 			ui.Step("%s needs no login", tool.Name)
 			if note := tool.Note(); note != "" {

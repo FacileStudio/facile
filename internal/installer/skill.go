@@ -39,9 +39,9 @@ func registerSkill(tool manifest.Tool, work string) {
 		}
 	}
 	if haveMyceliumSkills() {
-		// Pi (and any agent wired through the mycelium extension) reads root
-		// .md files from the mycelium skills dir. Write the same body there,
-		// named by the tool, so one integrations/SKILL.md feeds every agent.
+
+
+
 		dir := filepath.Join(home(), ".mycelium", "skills")
 		if os.WriteFile(filepath.Join(dir, tool.Skill+".md"), body, 0o644) == nil {
 			ui.Success("pi skill installed")
