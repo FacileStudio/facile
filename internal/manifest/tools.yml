@@ -566,7 +566,7 @@ tools:
         locally and has no suite server to log into and no credential to store.
 
   - name: tiroir
-    summary: Encrypted env store for sandboxed VMs
+    summary: Encrypted env manager applied into a shell
     repo: FacileStudio/tiroir
     branch: master
     bin: tiroir
@@ -578,5 +578,8 @@ tools:
       kind: none
       note: >-
         tiroir keeps shell variables encrypted at rest in ~/.tiroir (0600) keyed
-        by a sibling ~/.tiroir.key, and a VM shell sources the values at login.
-        No server, no login, no credential to store. Successor to skatos.
+        by a sibling ~/.tiroir.key. It manages env for boite VMs and, standalone,
+        can replace skatos in a config. `tiroir export` emits `export KEY=value`
+        statements the shell applies directly, so the store lands in the current
+        shell's environment. No server, no login, no credential to store.
+        Successor to skatos.
