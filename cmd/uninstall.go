@@ -11,8 +11,9 @@ import (
 )
 
 var uninstallCmd = &cobra.Command{
-	Use:   "uninstall <tool...>",
-	Short: "Remove installed Facile tools",
+	Use:     "uninstall <tool...>",
+	Aliases: []string{"remove"},
+	Short:   "Remove installed Facile tools",
 	Long: "Remove the binaries of one or more tools.\n\n" +
 		"Configuration and stored credentials are left alone; use `facile logout` for those.",
 	Args: cobra.MinimumNArgs(1),
