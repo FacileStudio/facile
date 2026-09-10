@@ -51,6 +51,18 @@ func Dim(s string) string { return dimStyle.Sprint(s) }
 // on a line that the reader is meant to land on first.
 func Accent(s string) string { return stepStyle.Sprint(s) }
 
+// Good renders text in the success style without printing it, for a field
+// stating something is healthy and up to date.
+func Good(s string) string { return okStyle.Sprint(s) }
+
+// Notice renders text in the warning style without printing it, for a field
+// stating something is not a released version but is not broken either.
+func Notice(s string) string { return warnStyle.Sprint(s) }
+
+// Alert renders text in the error style without printing it, for a field
+// stating something is wrong or unreadable.
+func Alert(s string) string { return errStyle.Sprint(s) }
+
 // Out prints data to stdout with no glyph, for output a script would consume.
 func Out(format string, a ...any) { fmt.Fprintf(os.Stdout, format+"\n", a...) }
 

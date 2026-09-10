@@ -121,6 +121,12 @@ func printTable(entries []entry) {
 			state = ui.Accent(state)
 		case !e.Installed:
 			state = ui.Dim(state)
+		case strings.Contains(e.Version, "dev"):
+			state = ui.Notice(state)
+		case !isSemver(e.Version):
+			state = ui.Alert(state)
+		default:
+			state = ui.Good(state)
 		}
 		fmt.Printf("%-*s  %s  %s\n", nameWidth, e.Name, state, ui.Dim(e.Summary))
 	}
