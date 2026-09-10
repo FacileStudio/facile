@@ -10,6 +10,21 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-09-10
+
+### Added
+
+- `facile remove`, an alias for `facile uninstall`.
+- The tiroir tool joins the catalog, summarized as an encrypted env manager:
+  it serves boite VMs and, standalone, can replace skatos in a config.
+
+### Changed
+
+- `facile list` colors each tool's version by install state (up to date,
+  outdated, or newer than the cached release).
+- Tiroir's catalog note now reflects `tiroir export` emitting `export KEY=value`
+  statements the shell applies directly into the current environment.
+
 ## [0.12.2] — 2026-09-10
 
 ### Changed
