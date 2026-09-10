@@ -132,7 +132,7 @@ tools:
         for a headless box: nuage-cli keeps a --token paste path for one.
 
   - name: casier
-    summary: Secrets and environment variables
+    summary: Secrets and env vars
     repo: FacileStudio/casier-cli
     branch: main
     bin: casier
@@ -235,7 +235,7 @@ tools:
         antenne_session cookie value.
 
   - name: journal
-    summary: Centralized logging — read, search, tail
+    summary: Centralized logging
     repo: FacileStudio/journal-cli
     branch: main
     bin: journal
@@ -287,7 +287,7 @@ tools:
         Go SDK's and curl's job.
 
   - name: courrier
-    summary: Self-hosted email — read, search, send
+    summary: Self-hosted email
     repo: FacileStudio/courrier-cli
     branch: main
     bin: courrier
@@ -338,7 +338,7 @@ tools:
         CLI-STANDARD 6.1 and carries a default_account key beside the token, so
         preserve is required on write.
   - name: sonde
-    summary: Uptime monitoring — heartbeats, monitors, incidents
+    summary: Uptime monitoring
     repo: FacileStudio/sonde-cli
     branch: main
     bin: sonde
@@ -478,7 +478,7 @@ tools:
       note: Ardoise runs entirely offline and has no account.
 
   - name: douane
-    summary: Vulnerability sweep — scan, rank, sweep the fleet
+    summary: Vulnerability sweep
     repo: FacileStudio/douane
     branch: main
     bin: douane
@@ -494,7 +494,7 @@ tools:
         to store; its only network traffic is advisory lookups.
 
   - name: filet
-    summary: Code-quality checker enforcing the Facile team guidelines
+    summary: Code-quality checker
     repo: FacileStudio/filet
     branch: main
     bin: filet
