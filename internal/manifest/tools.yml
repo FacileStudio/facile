@@ -583,3 +583,22 @@ tools:
         statements the shell applies directly, so the store lands in the current
         shell's environment. No server, no login, no credential to store.
         Successor to skatos.
+
+  - name: sonar
+    summary: Multi-engine web search
+    repo: FacileStudio/sonar
+    branch: main
+    bin: sonar
+    build: go
+    srcSubdir: .
+    asset: sonar
+    goVersionVar: github.com/FacileStudio/sonar/cmd.version
+    skill: sonar
+    auth:
+      kind: none
+      note: >-
+        sonar is a local multi-engine web search CLI querying keyed APIs
+        (brave/exa/tavily/firecrawl/serpapi), a self-hosted SearXNG (furet) and
+        scrape fallbacks (bing/ddg), with throttle/breaker/cache to dodge
+        IP-based blocking; config ~/.config/sonar/config.yml, keys via env or
+        tiroir; no server, no login.
