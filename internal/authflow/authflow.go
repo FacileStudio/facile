@@ -122,6 +122,33 @@ func extras() map[string]string {
 	return map[string]string{"machine": machine}
 }
 
+// identity names who signed in. It is cosmetic, so a failure is silence rather
+// than an error on an otherwise successful login.
+func identity(a *manifest.Auth, serverURL, token string) string {
+	if a.IdentityPath == "" || token == "" {
+		return ""
+	}
+
+	headers := map[string]string{}
+	if a.Transport == "cookie" {
+		headers["Cookie"] = a.CookieName + "=" + token
+	} else {
+		headers["Authorization"] = "Bearer " + token
+	}
+
+	res, err := get(serverURL+a.IdentityPath, headers)
+	if err != nil || !res.ok() {
+		return ""
+	}
+	doc := res.decode()
+	for _, key := range []string{"email", "username", "name", "login"} {
+		if value := stringField(doc, key); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
 // WarnEnvToken tells the user when an environment variable will keep answering
 // after a logout, so the clear does not look like it failed.
 func WarnEnvToken(a *manifest.Auth) {

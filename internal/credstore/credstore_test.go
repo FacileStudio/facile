@@ -1,6 +1,7 @@
 package credstore
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -10,68 +11,24 @@ import (
 	"github.com/FacileStudio/facile/internal/manifest"
 )
 
-func TestExpand(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-
-	cases := []struct {
-		name string
-		xdg  string
-		in   string
-		want string
-	}{
-		{"tilde", "", "~/.nuage.yml", filepath.Join(home, ".nuage.yml")},
-		{"xdg from env", "/somewhere/cfg", "${xdgConfig}/antenne/config.json", "/somewhere/cfg/antenne/config.json"},
-		{"xdg falls back to ~/.config", "", "${xdgConfig}/antenne/config.json", filepath.Join(home, ".config", "antenne", "config.json")},
-		{"absolute is left alone", "", "/etc/facile.yml", "/etc/facile.yml"},
-	}
-
-	for _, c := range cases {
+func TestWritePreservesUnknownKeys(t *testing.T) {
+	for _, c := range writePreserveCases() {
 		t.Run(c.name, func(t *testing.T) {
-			t.Setenv("XDG_CONFIG_HOME", c.xdg)
-			got, err := Expand(c.in)
-			if err != nil {
-				t.Fatalf("Expand(%q): %v", c.in, err)
-			}
-			if got != c.want {
-				t.Fatalf("Expand(%q) = %q, want %q", c.in, got, c.want)
-			}
+			assertWritePreserves(t, c)
 		})
 	}
 }
 
-// TestExpandUserConfigIsPlatformNative guards the distinction that matters:
-// ${userConfig} must land where Rust's dirs::config_dir points, which on macOS
-// is not ~/.config. Confusing the two writes casier's URL where nobody reads it.
-func TestExpandUserConfigIsPlatformNative(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("XDG_CONFIG_HOME", "")
-
-	native, err := os.UserConfigDir()
-	if err != nil {
-		t.Skip("no platform config directory")
-	}
-	got, err := Expand("${userConfig}/casier/config.toml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := filepath.Join(native, "casier", "config.toml"); got != want {
-		t.Fatalf("Expand = %q, want %q", got, want)
-	}
-	if runtime.GOOS == "darwin" && !strings.Contains(got, filepath.Join("Library", "Application Support")) {
-		t.Fatalf("on macOS ${userConfig} must be Library/Application Support, got %q", got)
-	}
+type writePreserveCase struct {
+	name     string
+	file     string
+	format   string
+	existing string
+	contains []string
 }
 
-func TestWritePreservesUnknownKeys(t *testing.T) {
-	cases := []struct {
-		name     string
-		file     string
-		format   string
-		existing string
-		contains []string
-	}{
+func writePreserveCases() []writePreserveCase {
+	return []writePreserveCase{
 		{
 			name:   "yaml keeps nuage's sync settings",
 			file:   ".nuage.yml",
@@ -95,42 +52,42 @@ func TestWritePreservesUnknownKeys(t *testing.T) {
 			contains: []string{"# hand written", "[ui]", "color = true", "token = \"NEW\"", "server_url = \"http://new\""},
 		},
 	}
+}
 
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			dir := t.TempDir()
-			path := filepath.Join(dir, c.file)
-			if err := os.WriteFile(path, []byte(c.existing), 0o600); err != nil {
-				t.Fatal(err)
-			}
+// assertWritePreserves writes a fresh credential over the sample file and
+// checks that the fields the tool keeps elsewhere all survived.
+func assertWritePreserves(t *testing.T, c writePreserveCase) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, c.file)
+	if err := os.WriteFile(path, []byte(c.existing), 0o600); err != nil {
+		t.Fatal(err)
+	}
 
-			s := &manifest.Store{
-				Kind:       "file",
-				Path:       path,
-				Format:     c.format,
-				TokenField: "token",
-				URLField:   urlFieldFor(c.format),
-				Mode:       0o600,
-				Preserve:   true,
-			}
-			if _, err := Write(s, Credential{Token: "NEW", ServerURL: "http://new"}); err != nil {
-				t.Fatal(err)
-			}
+	s := &manifest.Store{
+		Kind:       "file",
+		Path:       path,
+		Format:     c.format,
+		TokenField: "token",
+		URLField:   urlFieldFor(c.format),
+		Mode:       0o600,
+		Preserve:   true,
+	}
+	if _, err := Write(s, Credential{Token: "NEW", ServerURL: "http://new"}); err != nil {
+		t.Fatal(err)
+	}
 
-			raw, err := os.ReadFile(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			body := string(raw)
-			for _, want := range c.contains {
-				if !strings.Contains(body, want) {
-					t.Fatalf("rewritten file lost %q:\n%s", want, body)
-				}
-			}
-			if strings.Contains(body, "OLD") {
-				t.Fatalf("the old credential survived the rewrite:\n%s", body)
-			}
-		})
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(raw)
+	for _, want := range c.contains {
+		if !strings.Contains(body, want) {
+			t.Fatalf("rewritten file lost %q:\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, "OLD") {
+		t.Fatalf("the old credential survived the rewrite:\n%s", body)
 	}
 }
 
@@ -164,19 +121,18 @@ func TestWriteCreatesFileAtItsTargetMode(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	assertPerm(t, path, "credential file", 0o600)
+	assertPerm(t, dir, "credential directory", 0o700)
+}
+
+// assertPerm checks that a path was left at the given permission bits.
+func assertPerm(t *testing.T, path, what string, want fs.FileMode) {
 	info, err := os.Stat(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := info.Mode().Perm(); got != 0o600 {
-		t.Fatalf("credential file is %o, want 600", got)
-	}
-	dirInfo, err := os.Stat(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := dirInfo.Mode().Perm(); got != 0o700 {
-		t.Fatalf("credential directory is %o, want 700", got)
+	if got := info.Mode().Perm(); got != want {
+		t.Fatalf("%s is %o, want %o", what, got, want)
 	}
 }
 

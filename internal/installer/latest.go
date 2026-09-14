@@ -2,6 +2,7 @@ package installer
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -33,12 +34,8 @@ func Latest(cachePath string, repos []string, force bool) map[string]string {
 		return cached
 	}
 	merged := make(map[string]string, len(cached)+len(resolved))
-	for repo, tag := range cached {
-		merged[repo] = tag
-	}
-	for repo, tag := range resolved {
-		merged[repo] = tag
-	}
+	maps.Copy(merged, cached)
+	maps.Copy(merged, resolved)
 	writeLatest(cachePath, merged)
 	return merged
 }
@@ -85,12 +82,8 @@ func ReadLatest(path string) map[string]string {
 func WriteLatest(path string, tags map[string]string) {
 	cached := readLatest(path)
 	merged := make(map[string]string, len(cached)+len(tags))
-	for repo, tag := range cached {
-		merged[repo] = tag
-	}
-	for repo, tag := range tags {
-		merged[repo] = tag
-	}
+	maps.Copy(merged, cached)
+	maps.Copy(merged, tags)
 	writeLatest(path, merged)
 }
 

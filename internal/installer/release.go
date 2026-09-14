@@ -83,7 +83,7 @@ func fromRelease(tool manifest.Tool, version, work string) (string, error) {
 func verifyChecksum(blob []byte, name, sums string) error {
 	sum := sha256.Sum256(blob)
 	want := hex.EncodeToString(sum[:])
-	for _, line := range strings.Split(sums, "\n") {
+	for line := range strings.SplitSeq(sums, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) == 2 && strings.TrimPrefix(fields[1], "*") == name {
 			if fields[0] == want {
@@ -111,7 +111,7 @@ func extract(blob []byte, bin, work string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("cannot read the archive: %w", err)
 		}
-		if header.Typeflag != tar.TypeReg || filepath.Base(header.Name) != bin {
+		if !isBinaryEntry(header, bin) {
 			continue
 		}
 		dest := filepath.Join(work, bin)
@@ -120,6 +120,11 @@ func extract(blob []byte, bin, work string) (string, error) {
 		}
 		return dest, nil
 	}
+}
+
+// isBinaryEntry is true for a plain file whose basename is the tool's binary.
+func isBinaryEntry(header *tar.Header, bin string) bool {
+	return header.Typeflag == tar.TypeReg && filepath.Base(header.Name) == bin
 }
 
 func writeFrom(r io.Reader, dest string) error {

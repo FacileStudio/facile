@@ -102,7 +102,11 @@ func TestChooseFlow(t *testing.T) {
 // TestCatalogFlowsAreComplete keeps the catalog and the implementation honest:
 // every tool that declares a login must carry the pieces that flow needs.
 func TestCatalogFlowsAreComplete(t *testing.T) {
-	for _, tool := range manifest.Load(filepath.Join(t.TempDir(), "absent.yml")).Tools {
+	m, err := manifest.Load(filepath.Join(t.TempDir(), "absent.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range m.Tools {
 		if !tool.NeedsLogin() {
 			continue
 		}

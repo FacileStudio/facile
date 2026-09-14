@@ -36,13 +36,9 @@ func TestOutdated(t *testing.T) {
 		{"prerelease is behind its release", "0.9.0-rc1", "0.9.0", true},
 		{"release is not behind its prerelease", "0.9.0", "0.9.0-rc1", false},
 
-
-
-
 		{"ahead of a stale cache", "0.9.0", "0.8.0", false},
 		{"ahead by a minor", "0.10.0", "0.9.0", false},
 		{"ahead by a patch", "0.9.1", "0.9.0", false},
-
 
 		{"double digit minor", "0.9.0", "0.10.0", true},
 		{"double digit patch", "1.2.9", "1.2.10", true},
@@ -57,37 +53,35 @@ func TestOutdated(t *testing.T) {
 }
 
 func TestSplitSelf(t *testing.T) {
-	original := flagAll
-	t.Cleanup(func() { flagAll = original })
-	flagAll = false
+	c := NewUpdateCommand()
 
 	t.Run("no arguments takes facile and every installed tool", func(t *testing.T) {
-		self, rest, named := splitSelf(nil)
+		self, rest, named := splitSelf(c, nil)
 		if !self || len(rest) != 0 || named {
 			t.Errorf("got self=%v rest=%v named=%v", self, rest, named)
 		}
 	})
 
 	t.Run("facile alone updates facile alone", func(t *testing.T) {
-		self, rest, named := splitSelf([]string{"facile"})
+		self, rest, named := splitSelf(c, []string{"facile"})
 		if !self || len(rest) != 0 || !named {
 			t.Errorf("got self=%v rest=%v named=%v", self, rest, named)
 		}
-		tools, err := updateTargets(rest, named)
+		tools, err := updateTargets(c, rest, named)
 		if err != nil || len(tools) != 0 {
 			t.Errorf("naming facile must not widen the run: got %d tools, err %v", len(tools), err)
 		}
 	})
 
 	t.Run("a named tool leaves facile out", func(t *testing.T) {
-		self, rest, named := splitSelf([]string{"nuage"})
+		self, rest, named := splitSelf(c, []string{"nuage"})
 		if self || len(rest) != 1 || rest[0] != "nuage" || !named {
 			t.Errorf("got self=%v rest=%v named=%v", self, rest, named)
 		}
 	})
 
 	t.Run("facile alongside a tool takes both", func(t *testing.T) {
-		self, rest, _ := splitSelf([]string{"nuage", "facile"})
+		self, rest, _ := splitSelf(c, []string{"nuage", "facile"})
 		if !self || len(rest) != 1 || rest[0] != "nuage" {
 			t.Errorf("got self=%v rest=%v", self, rest)
 		}
@@ -95,7 +89,7 @@ func TestSplitSelf(t *testing.T) {
 }
 
 func TestUnknownToolAnswersForFacile(t *testing.T) {
-	err := unknownTool("facile", nil)
+	err := unknownTool("facile")
 	if err == nil {
 		t.Fatal("expected an error")
 	}

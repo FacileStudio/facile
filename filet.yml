@@ -5,15 +5,10 @@
 #   filet roast .     the rules, with commentary
 #
 # No `limits:` block: filet's own defaults apply. Nothing is disabled and no
-# limit is raised, so the repo reports itself as it is. `failOn: error` is what
-# keeps the gate green while the standing warnings stay on screen, and every
-# one of them is a real finding waiting for a real fix, not a tuned threshold.
-#
-# The standing warnings are known and expected. `go.global.mutable` and
-# `go.init` come from the cobra idiom, where each command file declares its
-# flag variables at package level and registers itself with the root command in
-# `init()`. The long and complex functions left are in `internal/credstore` and
-# in `internal/authflow`'s two oldest flows, which are what to split next.
+# limit is raised, so the repo reports itself as it is. `failOn: error` is the
+# only gate. The command files build their cobra commands in explicit
+# constructors (NewXCommand) rather than package-level flag vars and init(),
+# which is what keeps banGlobalMutable and banInit quiet.
 
 kind: cli
 
@@ -53,12 +48,12 @@ architecture:
   # sign-in and the trade for each tool's own credential.
   requiredFiles:
     "cmd": [root.go, install.go, uninstall.go, list.go, update.go, doctor.go, login.go, logout.go]
-    "internal/manifest": [manifest.go, auth.go]
-    "internal/installer": [installer.go, release.go, source.go, skill.go]
+    "internal/manifest": [manifest.go, auth.go, cache.go]
+    "internal/installer": [installer.go, release.go, source.go, skills.go, build.go]
     "internal/store": [store.go]
-    "internal/credstore": [credstore.go, file.go]
+    "internal/credstore": [credstore.go, file.go, keychain.go, yaml.go, json.go, toml.go]
     "internal/authflow": [authflow.go, choose.go, devicegrant.go, flows.go, http.go, oidcdevice.go, prompt.go, server.go, sso.go]
-    "internal/ui": [ui.go]
+    "internal/ui": [ui.go, render.go]
 
 style:
   banInlineComments: true

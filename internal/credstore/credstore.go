@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/zalando/go-keyring"
-
 	"github.com/FacileStudio/facile/internal/manifest"
 	"github.com/FacileStudio/facile/internal/store"
 )
@@ -168,8 +166,6 @@ func fileFields(s *manifest.Store, cred Credential) []field {
 func writeKeychain(s *manifest.Store, cred Credential) (Result, error) {
 	var result Result
 
-
-
 	if s.Path != "" {
 		path, err := writeFile(s, fileFields(&manifest.Store{
 			URLField: s.URLField,
@@ -181,91 +177,14 @@ func writeKeychain(s *manifest.Store, cred Credential) (Result, error) {
 		result.Locations = append(result.Locations, store.Tilde(path))
 	}
 
-	acct := keychainAccount(s, cred.ServerURL)
-	if err := setKeychain(s.KeychainService, acct, cred.Token); err != nil {
-		path, ferr := writeFallback(s, cred.Token)
-		if ferr != nil {
-			return result, fmt.Errorf("cannot reach your keychain and cannot write a fallback file — %s", ferr)
-		}
-		result.KeychainFallback = store.Tilde(path)
-		return result, nil
-	}
-	result.Locations = append(result.Locations, "your keychain")
-	return result, nil
-}
-
-// setKeychain verifies by reading back, because a keyring that accepts a write
-// and returns something else is a silent 401 an hour later.
-func setKeychain(service, account, token string) error {
-	if err := keyring.Set(service, account, token); err != nil {
-		return err
-	}
-	stored, err := keyring.Get(service, account)
+	fallback, err := keychainOrFallback(s, cred.ServerURL, cred.Token)
 	if err != nil {
-		return err
+		return result, err
 	}
-	if stored != token {
-		return fmt.Errorf("the keychain returned a different value than was written")
-	}
-	return nil
-}
-
-func clearKeychain(s *manifest.Store, serverURL string) (Result, error) {
-	var result Result
-
-	acct := keychainAccount(s, serverURL)
-	if acct == "" {
-		return result, fmt.Errorf("no server URL to identify the keychain entry — run `facile login` first")
-	}
-	if err := keyring.Delete(s.KeychainService, acct); err == nil {
+	if fallback != "" {
+		result.KeychainFallback = store.Tilde(fallback)
+	} else {
 		result.Locations = append(result.Locations, "your keychain")
-	} else if err != keyring.ErrNotFound {
-		return result, fmt.Errorf("cannot remove the keychain entry — unlock your keychain and try again")
-	}
-
-	path, err := fallbackPath(s)
-	if err == nil {
-		if err := os.Remove(path); err == nil {
-			result.Locations = append(result.Locations, store.Tilde(path))
-		}
 	}
 	return result, nil
-}
-
-// keychainAccount resolves the account string byte-for-byte as the tool's CLI
-// will compute it at read time. casier's entry is keyed on the server URL
-// including its /api suffix; a near-miss stores a token the CLI cannot see.
-func keychainAccount(s *manifest.Store, serverURL string) string {
-	if s.KeychainAccount == "serverUrl" {
-		return serverURL
-	}
-	return s.KeychainAccount
-}
-
-// writeFallback keeps the credential when no secret service exists, which is
-// the normal state of a headless Linux box. Refusing outright, as casier does
-// today, only leaves the user with nothing.
-func writeFallback(s *manifest.Store, token string) (string, error) {
-	path, err := fallbackPath(s)
-	if err != nil {
-		return "", err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return "", err
-	}
-	if err := createAt(path, []byte(token+"\n"), 0o600); err != nil {
-		return "", err
-	}
-	return path, nil
-}
-
-func fallbackPath(s *manifest.Store) (string, error) {
-	if s.Path != "" {
-		path, err := Expand(s.Path)
-		if err != nil {
-			return "", err
-		}
-		return filepath.Join(filepath.Dir(path), "token"), nil
-	}
-	return filepath.Join(store.ConfigDir(), s.KeychainService+".token"), nil
 }

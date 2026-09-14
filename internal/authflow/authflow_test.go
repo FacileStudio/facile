@@ -10,89 +10,77 @@ import (
 )
 
 func TestAwaitCallback(t *testing.T) {
-	cases := []struct {
-		name    string
-		flow    manifest.SSOFlow
-		request func(base, state string) string
-		want    string
-		wantErr bool
-	}{
-		{
-			name: "a matching state is accepted",
-			flow: manifest.SSOFlow{CallbackWith: "token", CallbackPath: "/callback", RequireState: true},
-			request: func(base, state string) string {
-				return base + "/callback?token=good&state=" + state
-			},
-			want: "good",
-		},
-		{
-			name: "a mismatched state is refused",
-			flow: manifest.SSOFlow{CallbackWith: "token", CallbackPath: "/callback", RequireState: true},
-			request: func(base, _ string) string {
-				return base + "/callback?token=stolen&state=not-the-nonce"
-			},
-			wantErr: true,
-		},
-		{
-			name: "a missing state is refused when one is required",
-			flow: manifest.SSOFlow{CallbackWith: "token", CallbackPath: "/callback", RequireState: true},
-			request: func(base, _ string) string {
-				return base + "/callback?token=stolen"
-			},
-			wantErr: true,
-		},
-		{
-			name: "sablier's root callback carries a code",
-			flow: manifest.SSOFlow{CallbackWith: "code", CallbackPath: "/", RequireState: false},
-			request: func(base, _ string) string {
-				return base + "/?code=one-time"
-			},
-			want: "one-time",
-		},
-	}
-
-	for _, c := range cases {
+	for _, c := range awaitCallbackCases() {
 		t.Run(c.name, func(t *testing.T) {
-			listener, err := net.Listen("tcp", "127.0.0.1:0")
-			if err != nil {
-				t.Fatal(err)
-			}
-			base := "http://" + listener.Addr().String()
-			const state = "0123456789abcdef0123456789abcdef"
-
-			type result struct {
-				value string
-				err   error
-			}
-			done := make(chan result, 1)
-			go func() {
-				value, err := awaitCallback(listener, &c.flow, state)
-				done <- result{value, err}
-			}()
-
-			response, err := http.Get(c.request(base, state))
-			if err != nil {
-				t.Fatalf("callback request: %v", err)
-			}
-			response.Body.Close()
-
-			got := <-done
-			if c.wantErr {
-				if got.err == nil {
-					t.Fatalf("a bad callback was accepted and returned %q", got.value)
-				}
-				if response.StatusCode != http.StatusBadRequest && response.StatusCode != http.StatusNotFound {
-					t.Fatalf("browser saw %d, want 400 or 404", response.StatusCode)
-				}
-				return
-			}
-			if got.err != nil {
-				t.Fatalf("a good callback failed: %v", got.err)
-			}
-			if got.value != c.want {
-				t.Fatalf("callback yielded %q, want %q", got.value, c.want)
-			}
+			runCallbackCase(t, c)
 		})
+	}
+}
+
+type awaitCallbackCase struct {
+	name    string
+	flow    manifest.SSOFlow
+	request func(base, state string) string
+	want    string
+	wantErr bool
+}
+
+// runCallbackCase drives one login callback end to end: listen, send the case's
+// request, and check the outcome the listener reported.
+func runCallbackCase(t *testing.T, c awaitCallbackCase) {
+	const state = "0123456789abcdef0123456789abcdef"
+	base, done := runCallback(t, &c.flow, state)
+
+	response, err := http.Get(c.request(base, state))
+	if err != nil {
+		t.Fatalf("callback request: %v", err)
+	}
+	response.Body.Close()
+
+	got := <-done
+	if c.wantErr {
+		if got.err == nil {
+			t.Fatalf("a bad callback was accepted and returned %q", got.value)
+		}
+		if response.StatusCode != http.StatusBadRequest && response.StatusCode != http.StatusNotFound {
+			t.Fatalf("browser saw %d, want 400 or 404", response.StatusCode)
+		}
+		return
+	}
+	if got.err != nil {
+		t.Fatalf("a good callback failed: %v", got.err)
+	}
+	if got.value != c.want {
+		t.Fatalf("callback yielded %q, want %q", got.value, c.want)
+	}
+}
+
+func awaitCallbackCases() []awaitCallbackCase {
+	return []awaitCallbackCase{
+		{
+			name:    "a matching state is accepted",
+			flow:    manifest.SSOFlow{CallbackWith: "token", CallbackPath: "/callback", RequireState: true},
+			request: func(base, state string) string { return base + "/callback?token=good&state=" + state },
+			want:    "good",
+		},
+		{
+			name:    "a mismatched state is refused",
+			flow:    manifest.SSOFlow{CallbackWith: "token", CallbackPath: "/callback", RequireState: true},
+			request: func(base, _ string) string { return base + "/callback?token=stolen&state=not-the-nonce" },
+			wantErr: true,
+		},
+		{
+			name:    "a missing state is refused when one is required",
+			flow:    manifest.SSOFlow{CallbackWith: "token", CallbackPath: "/callback", RequireState: true},
+			request: func(base, _ string) string { return base + "/callback?token=stolen" },
+			wantErr: true,
+		},
+		{
+			name:    "sablier's root callback carries a code",
+			flow:    manifest.SSOFlow{CallbackWith: "code", CallbackPath: "/", RequireState: false},
+			request: func(base, _ string) string { return base + "/?code=one-time" },
+			want:    "one-time",
+		},
 	}
 }
 
@@ -100,23 +88,9 @@ func TestAwaitCallback(t *testing.T) {
 // /favicon.ico unprompted: answering it as if it were the redirect would fail
 // a login for no reason.
 func TestAwaitCallbackIgnoresStrayRequests(t *testing.T) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	base := "http://" + listener.Addr().String()
 	const state = "0123456789abcdef0123456789abcdef"
 	flow := manifest.SSOFlow{CallbackWith: "token", CallbackPath: "/callback", RequireState: true}
-
-	done := make(chan string, 1)
-	go func() {
-		value, err := awaitCallback(listener, &flow, state)
-		if err != nil {
-			done <- "error: " + err.Error()
-			return
-		}
-		done <- value
-	}()
+	base, done := runCallback(t, &flow, state)
 
 	stray, err := http.Get(base + "/favicon.ico")
 	if err != nil {
@@ -133,9 +107,30 @@ func TestAwaitCallbackIgnoresStrayRequests(t *testing.T) {
 	}
 	good.Body.Close()
 
-	if value := <-done; value != "good" {
+	if value := (<-done).value; value != "good" {
 		t.Fatalf("the listener did not survive a stray request: %q", value)
 	}
+}
+
+type callbackResult struct {
+	value string
+	err   error
+}
+
+// runCallback starts a loopback listener and runs awaitCallback against it in
+// the background, returning the base URL and the channel it reports through.
+func runCallback(t *testing.T, flow *manifest.SSOFlow, state string) (string, chan callbackResult) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := "http://" + listener.Addr().String()
+	done := make(chan callbackResult, 1)
+	go func() {
+		value, err := awaitCallback(listener, flow, state)
+		done <- callbackResult{value, err}
+	}()
+	return base, done
 }
 
 func TestNonceIsHexAndUnique(t *testing.T) {
@@ -161,23 +156,33 @@ func TestNonceIsHexAndUnique(t *testing.T) {
 }
 
 func TestCookieScraping(t *testing.T) {
-	cases := []struct {
-		name   string
-		header http.Header
-		want   string
-	}{
+	for _, c := range cookieScrapingCases() {
+		t.Run(c.name, func(t *testing.T) {
+			got := response{header: c.header}.cookie("antenne_session")
+			if got != c.want {
+				t.Fatalf("cookie = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+type cookieScrapingCase struct {
+	name   string
+	header http.Header
+	want   string
+}
+
+func cookieScrapingCases() []cookieScrapingCase {
+	return []cookieScrapingCase{
 		{
 			name:   "antenne's session cookie",
 			header: http.Header{"Set-Cookie": []string{"antenne_session=abc123; Path=/; HttpOnly; SameSite=Lax"}},
 			want:   "abc123",
 		},
 		{
-			name: "the right cookie among several",
-			header: http.Header{"Set-Cookie": []string{
-				"csrf=nope; Path=/",
-				"antenne_session=abc123; Path=/; Secure",
-			}},
-			want: "abc123",
+			name:   "the right cookie among several",
+			header: http.Header{"Set-Cookie": []string{"csrf=nope; Path=/", "antenne_session=abc123; Path=/; Secure"}},
+			want:   "abc123",
 		},
 		{
 			name:   "no cookie at all means no password is configured",
@@ -189,15 +194,6 @@ func TestCookieScraping(t *testing.T) {
 			header: http.Header{"Set-Cookie": []string{"antenne_session=; Max-Age=0"}},
 			want:   "",
 		},
-	}
-
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			got := response{header: c.header}.cookie("antenne_session")
-			if got != c.want {
-				t.Fatalf("cookie = %q, want %q", got, c.want)
-			}
-		})
 	}
 }
 

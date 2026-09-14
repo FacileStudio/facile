@@ -3,6 +3,7 @@ package store
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -48,12 +49,7 @@ func Tilde(path string) string {
 
 // OnPath reports whether dir is listed in $PATH.
 func OnPath(dir string) bool {
-	for _, entry := range filepath.SplitList(os.Getenv("PATH")) {
-		if entry == dir {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(filepath.SplitList(os.Getenv("PATH")), dir)
 }
 
 func home() string {

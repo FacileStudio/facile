@@ -47,8 +47,7 @@ func TestBuildRefusesASourceFallbackAfterAnIntegrityFailure(t *testing.T) {
 
 	_, err := build(fakeTool(), Options{}, t.TempDir())
 
-	var integrity integrityError
-	if !errors.As(err, &integrity) {
+	if _, ok := errors.AsType[integrityError](err); !ok {
 		t.Fatalf("an integrity failure must abort the install, got %v", err)
 	}
 }

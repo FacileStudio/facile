@@ -15,42 +15,40 @@ import (
 	"github.com/FacileStudio/facile/internal/ui"
 )
 
-var (
-	flagVersion string
-	flagSource  bool
-	flagNoSkill bool
-	flagAll     bool
-)
+// NewInstallCommand builds the install command and its flags.
+func NewInstallCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "install [tool...]",
+		Short: "Install Facile tools",
+		Long: "Install one or more tools from the Facile Studio catalog.\n\n" +
+			"With no arguments it opens a picker. Pass --all to take everything.",
+		RunE: func(c *cobra.Command, args []string) error {
+			tools, err := chooseTools(c, args)
+			if err != nil {
+				return err
+			}
+			if len(tools) == 0 {
+				ui.Step("Nothing selected")
+				return nil
+			}
+			return installAll(c, tools)
+		},
+	}
+	cmd.Flags().String("version", "", "Release tag to install (default latest)")
+	cmd.Flags().Bool("source", false, "Build from source, ignore published releases")
+	cmd.Flags().Bool("no-skill", false, "Skip AI agent skill registration")
+	cmd.Flags().Bool("no-mcp", false, "Skip MCP server registration in agent harnesses")
+	cmd.Flags().Bool("all", false, "Install every tool in the catalog")
+	return cmd
+}
 
-var installCmd = &cobra.Command{
-	Use:   "install [tool...]",
-	Short: "Install Facile tools",
-	Long: "Install one or more tools from the Facile Studio catalog.\n\n" +
-		"With no arguments it opens a picker. Pass --all to take everything.",
-	RunE: func(_ *cobra.Command, args []string) error {
-		tools, err := chooseTools(args)
+func chooseTools(c *cobra.Command, args []string) ([]manifest.Tool, error) {
+	if all, _ := c.Flags().GetBool("all"); all {
+		m, err := catalog()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if len(tools) == 0 {
-			ui.Step("Nothing selected")
-			return nil
-		}
-		return installAll(tools)
-	},
-}
-
-func init() {
-	installCmd.Flags().StringVar(&flagVersion, "version", "", "Release tag to install (default latest)")
-	installCmd.Flags().BoolVar(&flagSource, "source", false, "Build from source, ignore published releases")
-	installCmd.Flags().BoolVar(&flagNoSkill, "no-skill", false, "Skip AI agent skill registration")
-	installCmd.Flags().BoolVar(&flagAll, "all", false, "Install every tool in the catalog")
-	rootCmd.AddCommand(installCmd)
-}
-
-func chooseTools(args []string) ([]manifest.Tool, error) {
-	if flagAll {
-		return catalog().Tools, nil
+		return m.Tools, nil
 	}
 	if len(args) > 0 {
 		return resolve(args)
@@ -58,14 +56,17 @@ func chooseTools(args []string) ([]manifest.Tool, error) {
 	if !isatty.IsTerminal(os.Stdin.Fd()) {
 		return nil, fmt.Errorf("no tool named — pass tool names or --all when not on a terminal")
 	}
-	return pickTools()
+	return pickTools(c)
 }
 
 // pickTools shows the catalog and lets the user check off what they want.
 // Already-installed tools start checked, so the picker doubles as a review.
-func pickTools() ([]manifest.Tool, error) {
-	m := catalog()
-	dir := binDir()
+func pickTools(c *cobra.Command) ([]manifest.Tool, error) {
+	m, err := catalog()
+	if err != nil {
+		return nil, err
+	}
+	dir := binDir(c)
 	options := make([]huh.Option[string], 0, len(m.Tools))
 	for _, tool := range m.Tools {
 		_, present := installer.Installed(dir, tool.Bin)
@@ -87,14 +88,9 @@ func pickTools() ([]manifest.Tool, error) {
 	return resolve(chosen)
 }
 
-func installAll(tools []manifest.Tool) error {
-	dir := binDir()
-	opts := installer.Options{
-		BinDir:    dir,
-		Version:   flagVersion,
-		FromSrc:   flagSource,
-		WithSkill: !flagNoSkill,
-	}
+func installAll(c *cobra.Command, tools []manifest.Tool) error {
+	dir := binDir(c)
+	opts := buildOptions(c, dir)
 
 	var failed []string
 	for _, tool := range tools {
@@ -117,6 +113,27 @@ func installAll(tools []manifest.Tool) error {
 }
 
 // reportPath warns but never edits the user's shell configuration.
+// buildOptions assembles the install options from the command flags and the
+// catalog's MCP-tool list, whose fetch is best effort: a catalog that cannot be
+// read means MCP registration is skipped, never the binary install.
+func buildOptions(c *cobra.Command, dir string) installer.Options {
+	version, _ := c.Flags().GetString("version")
+	fromSrc, _ := c.Flags().GetBool("source")
+	noSkill, _ := c.Flags().GetBool("no-skill")
+	noMCP, _ := c.Flags().GetBool("no-mcp")
+	opts := installer.Options{
+		BinDir:    dir,
+		Version:   version,
+		FromSrc:   fromSrc,
+		WithSkill: !noSkill,
+		WithMCP:   !noMCP,
+	}
+	if m, err := catalog(); err == nil && m != nil {
+		opts.MCPTools = m.MCP
+	}
+	return opts
+}
+
 func reportPath(dir string) {
 	if store.OnPath(dir) {
 		return

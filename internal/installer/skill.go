@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/FacileStudio/facile/internal/manifest"
-	"github.com/FacileStudio/facile/internal/ui"
 )
 
 // registerSkill teaches the AI coding agents on this machine about the tool.
@@ -25,28 +24,9 @@ func registerSkill(tool manifest.Tool, work string) {
 	if err != nil || len(body) == 0 {
 		return
 	}
-	if have("claude") {
-		dir := filepath.Join(home(), ".claude", "skills", tool.Skill)
-		if os.MkdirAll(dir, 0o755) == nil &&
-			os.WriteFile(filepath.Join(dir, "SKILL.md"), body, 0o644) == nil {
-			ui.Success("Claude Code skill installed")
-		}
-	}
-	if have("codex") {
-		path := filepath.Join(home(), ".codex", "AGENTS.md")
-		if os.MkdirAll(filepath.Dir(path), 0o755) == nil && injectBlock(path, tool.Skill, body) == nil {
-			ui.Success("Codex skill installed")
-		}
-	}
-	if haveMyceliumSkills() {
-
-
-
-		dir := filepath.Join(home(), ".mycelium", "skills")
-		if os.WriteFile(filepath.Join(dir, tool.Skill+".md"), body, 0o644) == nil {
-			ui.Success("pi skill installed")
-		}
-	}
+	writeClaudeSkill(tool.Skill, body)
+	writeCodexSkill(tool.Skill, body)
+	writeMyceliumSkill(tool.Skill, body)
 }
 
 // haveMyceliumSkills reports whether this machine runs the shared mycelium
@@ -72,7 +52,30 @@ func skillBody(tool manifest.Tool, work string) ([]byte, error) {
 func injectBlock(path, skill string, body []byte) error {
 	start := "<!-- " + skill + ":start -->"
 	end := "<!-- " + skill + ":end -->"
+	kept, err := keptLines(path, start, end)
+	if err != nil {
+		return err
+	}
 
+	var out strings.Builder
+	if len(kept) > 0 {
+		out.WriteString(strings.TrimRight(strings.Join(kept, "\n"), "\n"))
+		out.WriteString("\n\n")
+	}
+	out.WriteString(start)
+	out.WriteString("\n")
+	out.Write(body)
+	if !strings.HasSuffix(string(body), "\n") {
+		out.WriteString("\n")
+	}
+	out.WriteString(end)
+	out.WriteString("\n")
+	return os.WriteFile(path, []byte(out.String()), 0o644)
+}
+
+// keptLines reads the lines outside the tool's marked section, dropping the
+// marker lines and whatever sits between them so the old section is replaced.
+func keptLines(path, start, end string) ([]string, error) {
 	var kept []string
 	if existing, err := os.Open(path); err == nil {
 		scanner := bufio.NewScanner(existing)
@@ -88,19 +91,11 @@ func injectBlock(path, skill string, body []byte) error {
 			}
 		}
 		existing.Close()
+		if scanner.Err() != nil {
+			return nil, fmt.Errorf("cannot read %s: %w", path, scanner.Err())
+		}
 	}
-
-	var out strings.Builder
-	if len(kept) > 0 {
-		out.WriteString(strings.TrimRight(strings.Join(kept, "\n"), "\n") + "\n\n")
-	}
-	out.WriteString(start + "\n")
-	out.Write(body)
-	if !strings.HasSuffix(string(body), "\n") {
-		out.WriteString("\n")
-	}
-	out.WriteString(end + "\n")
-	return os.WriteFile(path, []byte(out.String()), 0o644)
+	return kept, nil
 }
 
 func have(bin string) bool {

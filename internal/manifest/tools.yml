@@ -22,6 +22,13 @@
 
 version: 1
 
+# Tools whose install subcommand registers their MCP server in the agent
+# harnesses on this machine; facile runs `<bin> install` after placing each of
+# these. sonar is the first; a tool joins by shipping that subcommand and being
+# named here.
+mcp:
+  - sonar
+
 tools:
   - name: opus
     summary: Project management
@@ -444,23 +451,23 @@ tools:
         headless path is now the identity provider's RFC 8628 grant, which is
         one sign-in for the whole suite rather than one per tool.
 
-  - name: nacelle
+  - name: kori
     summary: Terminal coding agent
-    repo: FacileStudio/nacelle-tui
+    repo: FacileStudio/kori
     branch: main
-    bin: nacelle
+    bin: kori
     build: go
     srcSubdir: .
-    asset: nacelle-tui
+    asset: kori
     goVersionVar: main.version
     auth:
       kind: none
       envToken: ANTHROPIC_API_KEY
       note: >-
-        Nacelle is a client of the model APIs, not of a suite server, so there
+        Kori is a client of the model APIs, not of a suite server, so there
         is no suite login to drive. It reads ANTHROPIC_API_KEY for its default
         backend and OPENROUTER_API_KEY for -backend openrouter; settings live
-        in ~/.nacelle.yml, which facile never writes.
+        in ~/.kori.yml, which facile never writes.
 
   - name: ardoise
     summary: Invoice and contract PDFs

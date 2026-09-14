@@ -14,12 +14,6 @@ import (
 	"github.com/FacileStudio/facile/internal/ui"
 )
 
-var (
-	flagJSON  bool
-	flagQuiet bool
-	flagCheck bool
-)
-
 type entry struct {
 	Name      string `json:"name"`
 	Summary   string `json:"summary"`
@@ -30,58 +24,65 @@ type entry struct {
 	Outdated  bool   `json:"outdated"`
 }
 
-var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List the Facile tools and what is installed",
-	Long: "Show every tool in the catalog, the version installed, and whether a " +
-		"newer release is published.\n\n" +
-		"The catalog is refreshed from the remote on every run, so a tool added " +
-		"upstream shows up immediately. The published versions come from a cache " +
-		"refreshed at most once a day, so listing stays instant and works offline. " +
-		"Pass --check to resolve them now.",
-	RunE: func(_ *cobra.Command, _ []string) error {
-		m := catalog()
-		if flagQuiet {
-			printNames(survey(m, nil))
-			return nil
-		}
-		entries := survey(m, latestTags(m))
-		if flagJSON {
-			return json.NewEncoder(os.Stdout).Encode(entries)
-		}
-		printTable(entries)
-		return nil
-	},
+// NewListCommand builds the list command and its flags.
+func NewListCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List the Facile tools and what is installed",
+		Long: "Show every tool in the catalog, the version installed, and whether a " +
+			"newer release is published.\n\n" +
+			"The catalog is refreshed from the remote on every run, so a tool added " +
+			"upstream shows up immediately. The published versions come from a cache " +
+			"refreshed at most once a day, so listing stays instant and works offline. " +
+			"Pass --check to resolve them now.",
+		RunE: runList,
+	}
+	cmd.Flags().Bool("json", false, "Print one JSON document to stdout")
+	cmd.Flags().BoolP("quiet", "q", false, "Print installed tool names only")
+	cmd.Flags().Bool("check", false, "Resolve the latest releases now instead of using the cache")
+	return cmd
 }
 
-func init() {
-	listCmd.Flags().BoolVar(&flagJSON, "json", false, "Print one JSON document to stdout")
-	listCmd.Flags().BoolVarP(&flagQuiet, "quiet", "q", false, "Print installed tool names only")
-	listCmd.Flags().BoolVar(&flagCheck, "check", false, "Resolve the latest releases now instead of using the cache")
-	rootCmd.AddCommand(listCmd)
+func runList(c *cobra.Command, _ []string) error {
+	m, err := catalog()
+	if err != nil {
+		return err
+	}
+	version := c.Version
+	if quiet, _ := c.Flags().GetBool("quiet"); quiet {
+		printNames(survey(c, m, nil, version))
+		return nil
+	}
+	entries := survey(c, m, latestTags(c, m), version)
+	if asJSON, _ := c.Flags().GetBool("json"); asJSON {
+		return json.NewEncoder(os.Stdout).Encode(entries)
+	}
+	printTable(entries)
+	return nil
 }
 
 // latestTags asks only about the tools that are installed, plus facile itself.
 // Resolving a release for a tool the user does not have spends a request to
 // render nothing.
-func latestTags(m *manifest.Manifest) map[string]string {
-	dir := binDir()
+func latestTags(c *cobra.Command, m *manifest.Manifest) map[string]string {
+	dir := binDir(c)
 	repos := []string{facileRepo}
 	for _, tool := range m.Tools {
 		if _, ok := installer.Installed(dir, tool.Bin); ok {
 			repos = append(repos, tool.Repo)
 		}
 	}
-	return installer.Latest(store.LatestPath(), repos, flagCheck)
+	check, _ := c.Flags().GetBool("check")
+	return installer.Latest(store.LatestPath(), repos, check)
 }
 
 // survey lists facile first, then the catalog in its own order. The installer
 // leads because it is the one row that explains the others: a stale facile is
 // the reason a tool can be missing a login flow or a whole catalog entry.
-func survey(m *manifest.Manifest, latest map[string]string) []entry {
-	dir := binDir()
+func survey(c *cobra.Command, m *manifest.Manifest, latest map[string]string, version string) []entry {
+	dir := binDir(c)
 	entries := make([]entry, 0, len(m.Tools)+1)
-	entries = append(entries, selfEntry(latest))
+	entries = append(entries, selfEntry(latest, version))
 	for _, tool := range m.Tools {
 		e := entry{Name: tool.Name, Summary: tool.Summary, Repo: tool.Repo}
 		if line, ok := installer.Installed(dir, tool.Bin); ok {
@@ -162,18 +163,4 @@ func stateOf(e entry) string {
 	default:
 		return "not installed"
 	}
-}
-
-// versionOf returns the version part of a line like "{tool} {version}" or
-// "{tool} version {version}". It returns everything after the first space,
-// unless the second word is "version", in which case it returns the third word.
-func versionOf(line string) string {
-	parts := strings.Fields(line)
-	if len(parts) >= 3 && parts[1] == "version" {
-		return parts[2]
-	}
-	if _, ver, found := strings.Cut(line, " "); found {
-		return ver
-	}
-	return line
 }

@@ -6,18 +6,24 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/FacileStudio/facile/internal/manifest"
 	"github.com/FacileStudio/facile/internal/ui"
 )
 
-// Options controls a single tool installation.
+// Options controls a single tool installation. MCPTools names the tools whose
+// install subcommand registers an MCP server in the agent harnesses; facile
+// runs that subcommand after placing the binary, the same way a tool owns its
+// --version line.
 type Options struct {
 	BinDir    string
 	Version   string
 	FromSrc   bool
 	WithSkill bool
+	WithMCP   bool
+	MCPTools  []string
 }
 
 // Install places one tool's binary in BinDir, preferring a published release
@@ -33,8 +39,10 @@ func Install(tool manifest.Tool, opts Options) (string, error) {
 	}
 	defer os.RemoveAll(work)
 
-	if err := missingRequirements(tool); err != nil {
-		return "", err
+	for _, req := range tool.Requires {
+		if _, err := exec.LookPath(req); err != nil {
+			return "", fmt.Errorf("%s needs %s on your PATH — install it first", tool.Name, req)
+		}
 	}
 
 	dest := filepath.Join(opts.BinDir, tool.Bin)
@@ -47,6 +55,9 @@ func Install(tool manifest.Tool, opts Options) (string, error) {
 	}
 	if opts.WithSkill {
 		registerSkill(tool, work)
+	}
+	if opts.WithMCP && slices.Contains(opts.MCPTools, tool.Name) {
+		registerMCP(dest)
 	}
 	return Verify(dest)
 }
@@ -66,8 +77,7 @@ func build(tool manifest.Tool, opts Options, work string) (string, error) {
 		if err == nil {
 			return path, nil
 		}
-		var integrity integrityError
-		if errors.As(err, &integrity) {
+		if _, ok := errors.AsType[integrityError](err); ok {
 			return "", err
 		}
 		ui.Warn("falling back to a source build: %s", err)
@@ -89,10 +99,15 @@ func Verify(path string) (string, error) {
 	return line, nil
 }
 
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
 // Installed reports the version line of an already-installed tool.
 func Installed(binDir, bin string) (string, bool) {
 	path := filepath.Join(binDir, bin)
-	if _, err := os.Stat(path); err != nil {
+	if !exists(path) {
 		return "", false
 	}
 	line, err := Verify(path)
@@ -105,7 +120,7 @@ func Installed(binDir, bin string) (string, bool) {
 // Uninstall removes a tool's binary. A tool that is not installed is not an error.
 func Uninstall(binDir, bin string) (bool, error) {
 	path := filepath.Join(binDir, bin)
-	if _, err := os.Stat(path); err != nil {
+	if !exists(path) {
 		return false, nil
 	}
 	if err := os.Remove(path); err != nil {
@@ -141,13 +156,4 @@ func prepareBinDir(dir string) error {
 		return fmt.Errorf("%s is not writable", dir)
 	}
 	return os.Remove(probe)
-}
-
-func missingRequirements(tool manifest.Tool) error {
-	for _, req := range tool.Requires {
-		if _, err := exec.LookPath(req); err != nil {
-			return fmt.Errorf("%s needs %s on your PATH — install it first", tool.Name, req)
-		}
-	}
-	return nil
 }

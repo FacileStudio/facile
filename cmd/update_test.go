@@ -79,7 +79,7 @@ func TestStaleKeepsTheOutdatedToolsInCatalogOrder(t *testing.T) {
 	}
 
 	var got []string
-	for _, tool := range stale(tools, "") {
+	for _, tool := range stale(NewUpdateCommand(), tools, "") {
 		got = append(got, tool.Name)
 	}
 	want := []string{"sablier", "nuage"}
@@ -97,9 +97,7 @@ func stubLatestTag(t *testing.T, fn func(string) (string, error)) {
 
 func stubBinDir(t *testing.T, dir string) {
 	t.Helper()
-	original := flagBinDir
-	t.Cleanup(func() { flagBinDir = original })
-	flagBinDir = dir
+	t.Setenv("FACILE_BIN_DIR", dir)
 }
 
 // stubBinary writes something Installed can actually execute, because the whole

@@ -14,32 +14,33 @@ import (
 	"github.com/FacileStudio/facile/internal/ui"
 )
 
-var doctorCmd = &cobra.Command{
-	Use:   "doctor",
-	Short: "Check the health of the Facile installation",
-	Long:  "Report anything that would make a Facile tool behave unexpectedly on this machine.",
-	RunE: func(_ *cobra.Command, _ []string) error {
-		problems := 0
-		dir := binDir()
-		ui.Step("Install directory %s", store.Tilde(dir))
-		problems += checkBinDir(dir)
-		problems += checkTools(dir)
-		problems += checkCatalog()
-		problems += checkStaged(dir)
-		problems += checkSelfCopies()
+// NewDoctorCommand builds the doctor command.
+func NewDoctorCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "doctor",
+		Short: "Check the health of the Facile installation",
+		Long:  "Report anything that would make a Facile tool behave unexpectedly on this machine.",
+		RunE: func(c *cobra.Command, _ []string) error {
+			problems := 0
+			dir := binDir(c)
+			ui.Step("Install directory %s", store.Tilde(dir))
+			problems += checkBinDir(dir)
+			problems += checkTools(dir)
+			problems += checkCatalog()
+			problems += checkStaged(dir)
+			problems += checkSelfCopies()
 
-		if problems == 0 {
-			ui.Success("Everything looks healthy")
-		}
-		reportSelf()
-		if problems > 0 {
-			return fmt.Errorf("%d problem(s) found", problems)
-		}
-		return nil
-	},
+			if problems == 0 {
+				ui.Success("Everything looks healthy")
+			}
+			reportSelf(c.Version)
+			if problems > 0 {
+				return fmt.Errorf("%d problem(s) found", problems)
+			}
+			return nil
+		},
+	}
 }
-
-func init() { rootCmd.AddCommand(doctorCmd) }
 
 func checkBinDir(dir string) int {
 	if _, err := os.Stat(dir); err != nil {
@@ -59,7 +60,12 @@ func checkBinDir(dir string) int {
 func checkTools(dir string) int {
 	problems := 0
 	installedAny := false
-	for _, tool := range catalog().Tools {
+	m, err := catalog()
+	if err != nil {
+		ui.Warn("%s", err)
+		return problems + 1
+	}
+	for _, tool := range m.Tools {
 		line, ok := installer.Installed(dir, tool.Bin)
 		if !ok {
 			continue
@@ -88,13 +94,6 @@ func checkShadow(tool manifest.Tool, dir string) int {
 	}
 	ui.Warn("another %s comes first on your PATH: %s", tool.Bin, found)
 	return 1
-}
-
-func realPath(path string) string {
-	if resolved, err := filepath.EvalSymlinks(path); err == nil {
-		return resolved
-	}
-	return path
 }
 
 func checkCatalog() int {
@@ -144,8 +143,8 @@ func checkSelfCopies() int {
 // It counts as no problem and cannot fail the command. An old facile installs
 // tools perfectly well, and a health check that goes red on every release would
 // be red more often than it is useful.
-func reportSelf() {
-	tag, outdated := selfOutdated(selfLatest(true))
+func reportSelf(version string) {
+	tag, outdated := selfOutdated(selfLatest(true), version)
 	if !outdated {
 		ui.Success("facile %s", version)
 		return

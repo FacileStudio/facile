@@ -3,6 +3,7 @@ package manifest
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -51,7 +52,10 @@ func TestFacileCatalogOverridesEverything(t *testing.T) {
 	}
 	t.Setenv("FACILE_CATALOG", local)
 
-	m := Load(filepath.Join(dir, "cache.yml"))
+	m, err := Load(filepath.Join(dir, "cache.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(m.Tools) != 1 || m.Tools[0].Name != "only" {
 		t.Fatalf("the local catalog was ignored: %v", m.Names())
 	}
@@ -61,7 +65,10 @@ func TestFacileCatalogOverridesEverything(t *testing.T) {
 func TestAMissingOverrideFallsBackToEmbedded(t *testing.T) {
 	t.Setenv("FACILE_CATALOG", filepath.Join(t.TempDir(), "absent.yml"))
 
-	m := Load(filepath.Join(t.TempDir(), "cache.yml"))
+	m, err := Load(filepath.Join(t.TempDir(), "cache.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(m.Tools) == 0 {
 		t.Fatal("expected the embedded catalog")
 	}
@@ -103,5 +110,20 @@ func TestEmbeddedSSOCodeFlowsAreOnThePorteContract(t *testing.T) {
 		if a.SSO.ExchangePath == "" {
 			t.Errorf("%s: the code flow needs an exchange path", tool.Name)
 		}
+	}
+}
+
+// TestSonarTheFirstMCPToolDeclaresTheInstallHook pins the coupling between the
+// two repos: facile can only run `sonar install` after the binary is in place
+// if the catalog names sonar as an MCP tool, and nothing else forces a freshly
+// installed binary to wire itself into the harnesses. Dropping the name loses
+// the auto-wiring silently, so the one catalog entry that starts it is pinned.
+func TestSonarTheFirstMCPToolDeclaresTheInstallHook(t *testing.T) {
+	m, err := parse(embedded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(m.MCP, "sonar") {
+		t.Errorf("sonar must be named under mcp: so the installer runs its install subcommand (got %v)", m.MCP)
 	}
 }

@@ -15,8 +15,6 @@ func TestRegisterSkillWritesThePiTarget(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-
-
 	skillsDir := filepath.Join(home, ".mycelium", "skills")
 	if err := os.MkdirAll(skillsDir, 0o755); err != nil {
 		t.Fatal(err)

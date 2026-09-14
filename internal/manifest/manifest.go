@@ -3,24 +3,14 @@ package manifest
 import (
 	_ "embed"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/goccy/go-yaml"
 )
 
 //go:embed tools.yml
 var embedded []byte
-
-const (
-	remoteURL   = "https://raw.githubusercontent.com/FacileStudio/facile/main/internal/manifest/tools.yml"
-	cacheMaxAge = 24 * time.Hour
-	fetchLimit  = 1 << 20
-)
 
 // Tool is one installable Facile CLI. The field names mirror the config block
 // of the per-repo install.sh so a divergence between the two is easy to spot.
@@ -39,10 +29,13 @@ type Tool struct {
 	Auth         *Auth    `yaml:"auth"`
 }
 
-// Manifest is the whole catalog.
+// Manifest is the whole catalog. MCP names the tools that register their MCP
+// server in agent harnesses on install, through each one's own install
+// subcommand; it is a list off Tool because Tool sits at the 12-field cap.
 type Manifest struct {
-	Version int    `yaml:"version"`
-	Tools   []Tool `yaml:"tools"`
+	Version int      `yaml:"version"`
+	Tools   []Tool   `yaml:"tools"`
+	MCP     []string `yaml:"mcp"`
 }
 
 // Load returns the catalog, preferring a fresh remote copy and falling back to
@@ -51,30 +44,59 @@ type Manifest struct {
 //
 // FACILE_CATALOG points at a local file and wins over everything, which is the
 // only way to try a catalog edit without publishing it first.
-func Load(cachePath string) *Manifest {
-	if local := os.Getenv("FACILE_CATALOG"); local != "" {
-		if raw, err := os.ReadFile(local); err == nil {
-			if m, err := parse(raw); err == nil {
-				return m
-			}
-		}
+func Load(cachePath string) (*Manifest, error) {
+	if m, err := localCatalog(); err == nil && m != nil {
+		return m, nil
 	}
 	if raw, err := os.ReadFile(cachePath); err == nil && fresh(cachePath) {
 		if m, err := parse(raw); err == nil {
-			return m
+			return m, nil
 		}
 	}
 	if raw, err := fetch(); err == nil {
 		if m, err := parse(raw); err == nil {
 			writeCache(cachePath, raw)
-			return m
+			return m, nil
 		}
 	}
+	return embeddedManifest()
+}
+
+// localCatalog is the escape hatch for trying a catalog edit before publishing
+// it. FACILE_CATALOG wins over everything else, remote and embedded alike. An
+// absent or unreadable override is not an error: Load falls through to the next
+// source rather than dying on an env var that names a stray path.
+func localCatalog() (*Manifest, error) {
+	local := os.Getenv("FACILE_CATALOG")
+	raw, ok := readLocal(local)
+	if !ok {
+		return nil, nil
+	}
+	return parse(raw)
+}
+
+// readLocal reads one catalog override, reporting not-found as the absence of
+// one rather than as an error, so Load can fall through to the next source.
+func readLocal(local string) ([]byte, bool) {
+	if local == "" {
+		return nil, false
+	}
+	raw, err := os.ReadFile(local)
+	if err != nil {
+		return nil, false
+	}
+	return raw, true
+}
+
+// embeddedManifest is the last resort: the catalog compiled into the binary.
+// It can only fail if the build shipped a broken file, which is then the
+// reporting error rather than a crash.
+func embeddedManifest() (*Manifest, error) {
 	m, err := parse(embedded)
 	if err != nil {
-		panic("embedded tools.yml is invalid: " + err.Error())
+		return nil, fmt.Errorf("the embedded catalog is invalid — reinstall facile: %s", err.Error())
 	}
-	return m
+	return m, nil
 }
 
 // Refresh forces a fetch from the remote catalog and updates the cache.
@@ -119,44 +141,4 @@ func parse(raw []byte) (*Manifest, error) {
 		return nil, fmt.Errorf("catalog lists no tools")
 	}
 	return &m, nil
-}
-
-func fetch() ([]byte, error) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(remoteURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("catalog returned %s", resp.Status)
-	}
-	return io.ReadAll(io.LimitReader(resp.Body, fetchLimit))
-}
-
-// fresh keeps a cached catalog for a day, but never past an upgrade of facile
-// itself. A new binary carries a new embedded catalog, and serving a cache
-// written by the old one would hide exactly the change the user just installed
-// — a tool that gained a login flow would keep asking for a pasted token.
-func fresh(path string) bool {
-	info, err := os.Stat(path)
-	if err != nil || time.Since(info.ModTime()) >= cacheMaxAge {
-		return false
-	}
-	self, err := os.Executable()
-	if err != nil {
-		return true
-	}
-	binary, err := os.Stat(self)
-	if err != nil {
-		return true
-	}
-	return !binary.ModTime().After(info.ModTime())
-}
-
-func writeCache(path string, raw []byte) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return
-	}
-	_ = os.WriteFile(path, raw, 0o644)
 }

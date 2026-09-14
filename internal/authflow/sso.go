@@ -44,14 +44,7 @@ func ssoLogin(a *manifest.Auth, serverURL string, opts Options) (string, error) 
 	if err != nil {
 		return "", err
 	}
-
-	if opts.NoBrowser || !openBrowser(target) {
-		ui.Step("Open this URL to sign in")
-		ui.Hint("%s", target)
-	} else {
-		ui.Step("Opening your browser to sign in")
-		ui.Hint("if nothing opened: %s", target)
-	}
+	openSignIn(target, opts.NoBrowser)
 
 	value, err := awaitCallback(listener, flow, state)
 	if err != nil {
@@ -63,6 +56,18 @@ func ssoLogin(a *manifest.Auth, serverURL string, opts Options) (string, error) 
 	return value, nil
 }
 
+// openSignIn opens the sign-in page, or prints its URL when the desktop is not
+// available to open one.
+func openSignIn(target string, noBrowser bool) {
+	if noBrowser || !openBrowser(target) {
+		ui.Step("Open this URL to sign in")
+		ui.Hint("%s", target)
+		return
+	}
+	ui.Step("Opening your browser to sign in")
+	ui.Hint("if nothing opened: %s", target)
+}
+
 func startURL(serverURL string, flow *manifest.SSOFlow, port int, state string) (string, error) {
 	target, err := url.Parse(serverURL + flow.StartPath)
 	if err != nil {
@@ -70,7 +75,7 @@ func startURL(serverURL string, flow *manifest.SSOFlow, port int, state string) 
 	}
 
 	query := target.Query()
-	for _, pair := range strings.Split(flow.ExtraParams, "&") {
+	for pair := range strings.SplitSeq(flow.ExtraParams, "&") {
 		if key, value, ok := strings.Cut(pair, "="); ok {
 			query.Set(key, value)
 		}
@@ -99,34 +104,8 @@ func awaitCallback(listener net.Listener, flow *manifest.SSOFlow, state string) 
 		path = defaultCallbackPath
 	}
 
-	type outcome struct {
-		value string
-		err   error
-	}
-	done := make(chan outcome, 1)
-
-	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != path {
-			page(w, http.StatusNotFound, "Not the login redirect.")
-			return
-		}
-		value := r.URL.Query().Get(param)
-		if value == "" {
-			page(w, http.StatusNotFound, "Not the login redirect.")
-			return
-		}
-
-
-
-
-		if flow.RequireState && r.URL.Query().Get("state") != state {
-			page(w, http.StatusBadRequest, "The callback did not match this login attempt. Run the command again.")
-			done <- outcome{err: fmt.Errorf("the sign-in callback did not match this login attempt — run `facile login` again")}
-			return
-		}
-		page(w, http.StatusOK, "Signed in. You can close this tab and return to your terminal.")
-		done <- outcome{value: value}
-	})}
+	done := make(chan callbackOutcome, 1)
+	server := &http.Server{Handler: makeCallbackHandler(path, param, flow.RequireState, state, done)}
 	go server.Serve(listener)
 	defer server.Close()
 
@@ -137,6 +116,36 @@ func awaitCallback(listener net.Listener, flow *manifest.SSOFlow, state string) 
 	case <-time.After(ssoTimeout):
 		return "", fmt.Errorf("timed out waiting for the browser — run `facile login` again")
 	}
+}
+
+type callbackOutcome struct {
+	value string
+	err   error
+}
+
+// makeCallbackHandler answers the one login redirect. Anything else — a browser
+// asking for /favicon.ico unprompted — gets a 404 and the listener keeps
+// waiting, because failing that request would fail the login for no reason. A
+// state that does not match is the opposite: a hard abort.
+func makeCallbackHandler(path, param string, requireState bool, state string, done chan callbackOutcome) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != path {
+			page(w, http.StatusNotFound, "Not the login redirect.")
+			return
+		}
+		value := r.URL.Query().Get(param)
+		if value == "" {
+			page(w, http.StatusNotFound, "Not the login redirect.")
+			return
+		}
+		if requireState && r.URL.Query().Get("state") != state {
+			page(w, http.StatusBadRequest, "The callback did not match this login attempt. Run the command again.")
+			done <- callbackOutcome{err: fmt.Errorf("the sign-in callback did not match this login attempt — run `facile login` again")}
+			return
+		}
+		page(w, http.StatusOK, "Signed in. You can close this tab and return to your terminal.")
+		done <- callbackOutcome{value: value}
+	})
 }
 
 func page(w http.ResponseWriter, status int, message string) {
