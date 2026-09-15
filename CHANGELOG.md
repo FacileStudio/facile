@@ -10,6 +10,12 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.14.1] — 2026-09-15
+
+### Fixed
+
+- Subcommands (`update`, `list`, `doctor`) now resolve the running facile version from the root command via `rootVersion(c)`. Previously, reading `c.Version` on subcommands returned an empty string, causing `facile update` to misidentify release builds as source builds.
+
 ## [0.14.0] — 2026-09-15
 
 ### Added
@@ -330,7 +336,8 @@ record what shipped rather than what was written down at the time.
 - First release. One installer for the whole suite, with a bootstrap script,
   tests and CI.
 
-[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/FacileStudio/facile/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/FacileStudio/facile/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/FacileStudio/facile/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/FacileStudio/facile/compare/v0.12.1...v0.12.2
