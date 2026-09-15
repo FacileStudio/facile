@@ -609,3 +609,22 @@ tools:
         scrape fallbacks (bing/ddg), with throttle/breaker/cache to dodge
         IP-based blocking; config ~/.config/sonar/config.yml, keys via env or
         tiroir; no server, no login.
+
+  - name: gare
+    summary: Zero-daemon Podman and Kubernetes GitOps orchestrator
+    repo: FacileStudio/gare
+    branch: main
+    bin: gare
+    build: go
+    srcSubdir: cmd/gare
+    asset: gare
+    goVersionVar: main.version
+    requires:
+      - podman
+      - caddy
+    auth:
+      kind: none
+      note: >-
+        Gare orchestrates rootless Podman and Kubernetes workloads via systemd user
+        units and Caddy ingress. It runs locally without an external suite server account.
+
