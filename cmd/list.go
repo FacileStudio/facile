@@ -10,7 +10,6 @@ import (
 
 	"github.com/FacileStudio/facile/internal/installer"
 	"github.com/FacileStudio/facile/internal/manifest"
-	"github.com/FacileStudio/facile/internal/store"
 	"github.com/FacileStudio/facile/internal/ui"
 )
 
@@ -32,14 +31,11 @@ func NewListCommand() *cobra.Command {
 		Long: "Show every tool in the catalog, the version installed, and whether a " +
 			"newer release is published.\n\n" +
 			"The catalog is refreshed from the remote on every run, so a tool added " +
-			"upstream shows up immediately. The published versions come from a cache " +
-			"refreshed at most once a day, so listing stays instant and works offline. " +
-			"Pass --check to resolve them now.",
+			"upstream shows up immediately.",
 		RunE: runList,
 	}
 	cmd.Flags().Bool("json", false, "Print one JSON document to stdout")
 	cmd.Flags().BoolP("quiet", "q", false, "Print installed tool names only")
-	cmd.Flags().Bool("check", false, "Resolve the latest releases now instead of using the cache")
 	return cmd
 }
 
@@ -72,8 +68,7 @@ func latestTags(c *cobra.Command, m *manifest.Manifest) map[string]string {
 			repos = append(repos, tool.Repo)
 		}
 	}
-	check, _ := c.Flags().GetBool("check")
-	return installer.Latest(store.LatestPath(), repos, check)
+	return installer.Latest(repos)
 }
 
 // survey lists facile first, then the catalog in its own order. The installer

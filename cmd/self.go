@@ -6,7 +6,6 @@ import (
 
 	"github.com/FacileStudio/facile/internal/installer"
 	"github.com/FacileStudio/facile/internal/manifest"
-	"github.com/FacileStudio/facile/internal/store"
 )
 
 // facileRepo is facile's own repository, kept here rather than in the catalog.
@@ -99,8 +98,7 @@ func fromHomebrew(path string) bool {
 	return false
 }
 
-// selfLatest resolves facile's own tag through the same cache the tool listing
-// uses, so `doctor` costs nothing when `list` has already refreshed it.
-func selfLatest(force bool) map[string]string {
-	return installer.Latest(store.LatestPath(), []string{facileRepo}, force)
+// selfLatest resolves facile's own tag live.
+func selfLatest() map[string]string {
+	return installer.Latest([]string{facileRepo})
 }

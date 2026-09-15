@@ -98,7 +98,7 @@ func updateSelf(c *cobra.Command) error {
 			ui.Hint("facile update facile --force replaces it with the published release")
 			return nil
 		}
-		if _, behind := selfOutdated(selfLatest(true), c.Version); !behind {
+		if _, behind := selfOutdated(selfLatest(), c.Version); !behind {
 			ui.Success("facile %s is up to date", c.Version)
 			return nil
 		}
@@ -119,7 +119,7 @@ func updateSelf(c *cobra.Command) error {
 // and let brew do the upgrade, since overwriting in place would be reverted by
 // the next `brew upgrade`.
 func brewSelf(c *cobra.Command) error {
-	if _, behind := selfOutdated(selfLatest(true), c.Version); !behind {
+	if _, behind := selfOutdated(selfLatest(), c.Version); !behind {
 		ui.Success("facile %s is up to date", c.Version)
 		return nil
 	}

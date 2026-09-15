@@ -144,7 +144,7 @@ func checkSelfCopies() int {
 // tools perfectly well, and a health check that goes red on every release would
 // be red more often than it is useful.
 func reportSelf(version string) {
-	tag, outdated := selfOutdated(selfLatest(true), version)
+	tag, outdated := selfOutdated(selfLatest(), version)
 	if !outdated {
 		ui.Success("facile %s", version)
 		return

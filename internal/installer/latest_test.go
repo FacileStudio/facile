@@ -1,45 +1,34 @@
 package installer
 
 import (
-	"os"
-	"path/filepath"
+	"reflect"
 	"testing"
-	"time"
 )
 
-func TestLatestServesAFreshCacheWithoutTheNetwork(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "latest.json")
-	writeLatest(path, map[string]string{"FacileStudio/filet": "v1.2.3"})
+func TestLatestResolvesTagsConcurrently(t *testing.T) {
+	orig := latestTagSeam
+	t.Cleanup(func() { latestTagSeam = orig })
+	latestTagSeam = func(repo string) (string, error) {
+		return map[string]string{
+			"FacileStudio/filet": "v1.2.3",
+			"FacileStudio/sonar": "v0.10.0",
+		}[repo], nil
+	}
 
-	got := Latest(path, []string{"FacileStudio/filet"}, false)
+	got := Latest([]string{"FacileStudio/filet", "FacileStudio/sonar"})
+	want := map[string]string{
+		"FacileStudio/filet": "v1.2.3",
+		"FacileStudio/sonar": "v0.10.0",
+	}
 
-	if got["FacileStudio/filet"] != "v1.2.3" {
-		t.Fatalf("cached tag not served: %v", got)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Latest() = %v, want %v", got, want)
 	}
 }
 
-func TestLatestKeepsAStaleCacheWhenNothingResolves(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "latest.json")
-	writeLatest(path, map[string]string{"FacileStudio/filet": "v1.2.3"})
-	old := time.Now().Add(-2 * latestMaxAge)
-	if err := os.Chtimes(path, old, old); err != nil {
-		t.Fatal(err)
-	}
-
-	got := Latest(path, nil, false)
-
-	if got["FacileStudio/filet"] != "v1.2.3" {
-		t.Fatalf("stale cache dropped instead of reused: %v", got)
-	}
-}
-
-func TestCoversRequiresEveryRequestedRepo(t *testing.T) {
-	cached := map[string]string{"a": "v1", "b": ""}
-
-	if !covers(cached, []string{"a", "b"}) {
-		t.Error("an empty tag must count as cached, or a tool with no release refreshes every run")
-	}
-	if covers(cached, []string{"a", "c"}) {
-		t.Error("a missing repo must force a refresh")
+func TestLatestHandlesEmptyRepoList(t *testing.T) {
+	got := Latest(nil)
+	if len(got) != 0 {
+		t.Fatalf("expected empty map for nil repos, got %v", got)
 	}
 }
