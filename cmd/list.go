@@ -44,7 +44,7 @@ func runList(c *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	version := c.Version
+	version := rootVersion(c)
 	if quiet, _ := c.Flags().GetBool("quiet"); quiet {
 		printNames(survey(c, m, nil, version))
 		return nil

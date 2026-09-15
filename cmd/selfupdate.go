@@ -93,13 +93,14 @@ func updateSelf(c *cobra.Command) error {
 	}
 	force, _ := c.Flags().GetBool("force")
 	if !force {
-		if !isSemver(c.Version) {
-			ui.Step("facile %s is a source build, leaving it alone", c.Version)
+		v := rootVersion(c)
+		if !isSemver(v) {
+			ui.Step("facile %s is a source build, leaving it alone", v)
 			ui.Hint("facile update facile --force replaces it with the published release")
 			return nil
 		}
-		if _, behind := selfOutdated(selfLatest(), c.Version); !behind {
-			ui.Success("facile %s is up to date", c.Version)
+		if _, behind := selfOutdated(selfLatest(), v); !behind {
+			ui.Success("facile %s is up to date", v)
 			return nil
 		}
 	}
@@ -119,11 +120,12 @@ func updateSelf(c *cobra.Command) error {
 // and let brew do the upgrade, since overwriting in place would be reverted by
 // the next `brew upgrade`.
 func brewSelf(c *cobra.Command) error {
-	if _, behind := selfOutdated(selfLatest(), c.Version); !behind {
-		ui.Success("facile %s is up to date", c.Version)
+	v := rootVersion(c)
+	if _, behind := selfOutdated(selfLatest(), v); !behind {
+		ui.Success("facile %s is up to date", v)
 		return nil
 	}
-	ui.Step("facile %s is managed by Homebrew", c.Version)
+	ui.Step("facile %s is managed by Homebrew", v)
 	ui.Hint("%s", upgradeHint())
 	return nil
 }

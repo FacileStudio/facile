@@ -59,6 +59,14 @@ func binDir(c *cobra.Command) string {
 	return store.BinDir()
 }
 
+// rootVersion resolves the version string stamped on the root command.
+func rootVersion(c *cobra.Command) string {
+	if c == nil {
+		return ""
+	}
+	return c.Root().Version
+}
+
 // catalog returns the freshest catalog it can, and the last-resort embedded
 // copy when the network is down. Only a binary whose embedded catalog is broken
 // — a bad build — leaves nothing to answer with.

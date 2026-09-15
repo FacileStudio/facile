@@ -97,3 +97,14 @@ func TestUnknownToolAnswersForFacile(t *testing.T) {
 		t.Error("facile is a listing row now; saying it is unknown reads as a bug")
 	}
 }
+
+// Subcommands in Cobra do not carry their own version, so rootVersion must
+// walk up to the root command to resolve it.
+func TestRootVersionInheritedFromRoot(t *testing.T) {
+	root := buildCommand("0.12.0")
+	for _, sub := range root.Commands() {
+		if got := rootVersion(sub); got != "0.12.0" {
+			t.Errorf("rootVersion(%s) = %q, want %q", sub.Name(), got, "0.12.0")
+		}
+	}
+}

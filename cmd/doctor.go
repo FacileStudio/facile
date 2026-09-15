@@ -33,7 +33,7 @@ func NewDoctorCommand() *cobra.Command {
 			if problems == 0 {
 				ui.Success("Everything looks healthy")
 			}
-			reportSelf(c.Version)
+			reportSelf(rootVersion(c))
 			if problems > 0 {
 				return fmt.Errorf("%d problem(s) found", problems)
 			}
