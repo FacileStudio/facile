@@ -10,6 +10,17 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-09-15
+
+### Added
+
+- Sonar, Kori, and Gare join the tool catalog.
+
+### Changed
+
+- `facile list` and `facile update` resolve release tags live without on-disk caching in `latest.json`.
+- Removed redundant `--check` flag from `facile list`.
+
 ## [0.13.0] — 2026-09-10
 
 ### Added
@@ -319,7 +330,9 @@ record what shipped rather than what was written down at the time.
 - First release. One installer for the whole suite, with a bootstrap script,
   tests and CI.
 
-[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/FacileStudio/facile/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/FacileStudio/facile/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/FacileStudio/facile/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/FacileStudio/facile/compare/v0.12.0...v0.12.1
 [0.10.0]: https://github.com/FacileStudio/facile/compare/v0.9.1...v0.10.0
