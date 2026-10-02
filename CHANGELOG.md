@@ -20,7 +20,7 @@ record what shipped rather than what was written down at the time.
 
 ### Added
 
-- Sonar, Kori, and Gare join the tool catalog.
+- Sonar, Bulle, and Gare join the tool catalog.
 
 ### Changed
 

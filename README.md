@@ -137,7 +137,7 @@ signing back in does not mean retyping where your instance lives.
 | `journal` | Centralized logging — read, search, tail |
 | `courrier` | Self-hosted email — read, search, send |
 | `mycelium` | Shared agent memory |
-| `kori` | Terminal coding agent |
+| `bulle` | Terminal coding agent |
 | `ardoise` | Invoice and contract PDFs |
 | `douane` | Vulnerability sweep — scan, rank, sweep the fleet |
 
@@ -145,7 +145,7 @@ The catalog lives in [`internal/manifest/tools.yml`](internal/manifest/tools.yml
 It is embedded at build time and refreshed from `main` at runtime, so a tenth
 tool never means reinstalling facile.
 
-**Note**: `facile install kori` installs the terminal coding agent, previously known as `nacelle`.
+**Note**: `facile install bulle` installs the terminal coding agent, previously known as `nacelle`.
 
 ## Why this exists
 

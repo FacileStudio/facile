@@ -451,23 +451,23 @@ tools:
         headless path is now the identity provider's RFC 8628 grant, which is
         one sign-in for the whole suite rather than one per tool.
 
-  - name: kori
+  - name: bulle
     summary: Terminal coding agent
-    repo: FacileStudio/kori
+    repo: FacileStudio/bulle
     branch: main
-    bin: kori
+    bin: bulle
     build: go
     srcSubdir: .
-    asset: kori
+    asset: bulle
     goVersionVar: main.version
     auth:
       kind: none
       envToken: ANTHROPIC_API_KEY
       note: >-
-        Kori is a client of the model APIs, not of a suite server, so there
+        Bulle is a client of the model APIs, not of a suite server, so there
         is no suite login to drive. It reads ANTHROPIC_API_KEY for its default
         backend and OPENROUTER_API_KEY for -backend openrouter; settings live
-        in ~/.kori.yml, which facile never writes.
+        in ~/.bulle.yml, which facile never writes.
 
   - name: ardoise
     summary: Invoice and contract PDFs
