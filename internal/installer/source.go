@@ -21,6 +21,11 @@ var toolchains = map[string]string{
 // when one was named, so a --version whose archive cannot be downloaded still
 // installs that version rather than whatever main happens to be.
 func fromSource(tool manifest.Tool, version, work string) (string, error) {
+	if version == "" {
+		if tag, err := LatestTag(tool.Repo); err == nil {
+			version = tag
+		}
+	}
 	hint, known := toolchains[tool.Build]
 	if !known {
 		return "", fmt.Errorf("unknown build backend: %s", tool.Build)
