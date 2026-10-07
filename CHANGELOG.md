@@ -10,6 +10,22 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-10-07
+
+### Added
+
+- `facile` discovers external tools from per-repo `facile.toml` or `[facile]` blocks in `mise.toml`. Repos are sourced from user-configured list URLs or explicit single entries.
+- User sources files (`~/facile.yml`, `~/.config/facile/sources.yml`) let anyone install tools not in the suite catalog without forking it.
+- List sources support plain text (one repo per line) and PEP 503 simple index formats, with 24h caching.
+- `versionCmd` and `versionPattern` on a tool entry let `facile update` detect versions from non-standard `--version` output.
+- `facile doctor` now checks user source file health, list source reachability, and warns when a user source shadows a catalog tool by name.
+- Catalog layers merge with case-insensitive name shadowing: later sources override earlier ones just like `FACILE_CATALOG`.
+
+### Changed
+
+- `manifest.Load` merges user sources into the catalog; `manifest.LoadBase` skips them so doctor can compare.
+- `manifest.Refresh` now includes user sources in the merged result.
+
 ## [0.14.1] — 2026-09-15
 
 ### Fixed
@@ -336,7 +352,8 @@ record what shipped rather than what was written down at the time.
 - First release. One installer for the whole suite, with a bootstrap script,
   tests and CI.
 
-[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/FacileStudio/facile/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/FacileStudio/facile/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/FacileStudio/facile/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/FacileStudio/facile/compare/v0.12.2...v0.13.0
