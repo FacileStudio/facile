@@ -10,6 +10,17 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.15.2] — 2026-10-07
+
+### Changed
+
+- Single-source processing extracted from `collectLayers` into `processSingleSources`, reducing cognitive complexity.
+- `ToTool` methods on `SingleSource` and `FacileToml` now share a `rawTool` converter, deduplicating default-value logic.
+
+### Added
+
+- `scripts/check.sh` runs the project's quality gate (build, test, vet, shell syntax).
+
 ## [0.15.1] — 2026-10-07
 
 ### Changed
@@ -358,7 +369,8 @@ record what shipped rather than what was written down at the time.
 - First release. One installer for the whole suite, with a bootstrap script,
   tests and CI.
 
-[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.15.1...HEAD
+[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.15.2...HEAD
+[0.15.2]: https://github.com/FacileStudio/facile/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/FacileStudio/facile/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/FacileStudio/facile/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/FacileStudio/facile/compare/v0.14.0...v0.14.1

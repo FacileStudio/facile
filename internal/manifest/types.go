@@ -117,6 +117,38 @@ type SingleSource struct {
 	VersionDetection `yaml:",inline"`
 }
 
+type rawTool struct {
+	name, summary, repo, branch, build, bin, srcSubdir, asset, skill, goVersionVar string
+	requires                                                                       []string
+	versionCmd, versionPattern                                                     string
+}
+
+func (r rawTool) toTool() Tool {
+	branch := r.branch
+	if branch == "" {
+		branch = "main"
+	}
+	build := r.build
+	if build == "" {
+		build = "go"
+	}
+	bin := r.bin
+	if bin == "" {
+		bin = r.name
+	}
+	srcSubdir := r.srcSubdir
+	if srcSubdir == "" {
+		srcSubdir = "."
+	}
+	return Tool{
+		Name: r.name, Summary: r.summary, Repo: r.repo,
+		Branch: branch, Bin: bin, Build: build, SrcSubdir: srcSubdir,
+		Asset: r.asset, Skill: r.skill, GoVersionVar: r.goVersionVar,
+		Requires:         r.requires,
+		VersionDetection: VersionDetection{Cmd: r.versionCmd, Pattern: r.versionPattern},
+	}
+}
+
 // ToTool converts a SingleSource into a Tool with sensible defaults.
 // Branch defaults to "main"; Build defaults to "go"; Bin defaults
 // to the tool name; SrcSubdir defaults to ".". Returns an error
@@ -125,39 +157,15 @@ func (s *SingleSource) ToTool() (Tool, error) {
 	if s.Name == "" {
 		return Tool{}, fmt.Errorf("single source entry missing name")
 	}
-	branch, build, bin, srcSubdir := s.Branch, s.Build, s.Bin, s.SrcSubdir
-	if branch == "" {
-		branch = "main"
-	}
-	if build == "" {
-		build = "go"
-	}
-	if bin == "" {
-		bin = s.Name
-	}
-	if srcSubdir == "" {
-		srcSubdir = "."
-	}
 	if s.Pattern != "" && !validateVersionPattern(s.Pattern) {
 		return Tool{}, fmt.Errorf("single source %q: invalid versionPattern: %s", s.Name, s.Pattern)
 	}
-	return Tool{
-		Name:         s.Name,
-		Summary:      s.Summary,
-		Repo:         s.Repo,
-		Branch:       branch,
-		Bin:          bin,
-		Build:        build,
-		SrcSubdir:    srcSubdir,
-		Asset:        s.Asset,
-		Skill:        s.Skill,
-		GoVersionVar: s.GoVersionVar,
-		Requires:     s.Requires,
-		VersionDetection: VersionDetection{
-			Cmd:     s.Cmd,
-			Pattern: s.Pattern,
-		},
-	}, nil
+	return rawTool{
+		name: s.Name, summary: s.Summary, repo: s.Repo, branch: s.Branch,
+		build: s.Build, bin: s.Bin, srcSubdir: s.SrcSubdir, asset: s.Asset,
+		skill: s.Skill, goVersionVar: s.GoVersionVar, requires: s.Requires,
+		versionCmd: s.Cmd, versionPattern: s.Pattern,
+	}.toTool(), nil
 }
 
 // ListSource is a URL that returns a list of repo identifiers, either one

@@ -80,29 +80,9 @@ func collectLayers(cfg SourceConfig, version int) ([]string, []*Manifest) {
 	defer cancel()
 
 	if len(cfg.Single) > 0 {
-		singleLayer := &Manifest{Version: version}
-		for _, s := range cfg.Single {
-			if s.Repo != "" && s.Name == "" {
-				tool, err := discoverTool(ctx, s.Repo)
-				if err != nil {
-					loadErrors = append(loadErrors, fmt.Sprintf("discovering %s: %s", s.Repo, err))
-					continue
-				}
-				if tool == nil {
-					loadErrors = append(loadErrors, fmt.Sprintf("no facile.toml or [facile] block found in %s", s.Repo))
-					continue
-				}
-				singleLayer.Tools = append(singleLayer.Tools, *tool)
-				continue
-			}
-			tool, err := s.ToTool()
-			if err != nil {
-				loadErrors = append(loadErrors, err.Error())
-				continue
-			}
-			singleLayer.Tools = append(singleLayer.Tools, tool)
-		}
-		layers = append(layers, singleLayer)
+		tools, errs := processSingleSources(ctx, cfg.Single)
+		loadErrors = append(loadErrors, errs...)
+		layers = append(layers, &Manifest{Version: version, Tools: tools})
 	}
 
 	if len(cfg.Lists) > 0 {
@@ -116,4 +96,32 @@ func collectLayers(cfg SourceConfig, version int) ([]string, []*Manifest) {
 	}
 
 	return loadErrors, layers
+}
+
+func processSingleSources(ctx context.Context, singles []SingleSource) ([]Tool, []string) {
+	var tools []Tool
+	var errors []string
+
+	for _, s := range singles {
+		if s.Repo != "" && s.Name == "" {
+			tool, err := discoverTool(ctx, s.Repo)
+			if err != nil {
+				errors = append(errors, fmt.Sprintf("discovering %s: %s", s.Repo, err))
+				continue
+			}
+			if tool == nil {
+				errors = append(errors, fmt.Sprintf("no facile.toml or [facile] block found in %s", s.Repo))
+				continue
+			}
+			tools = append(tools, *tool)
+			continue
+		}
+		tool, err := s.ToTool()
+		if err != nil {
+			errors = append(errors, err.Error())
+			continue
+		}
+		tools = append(tools, tool)
+	}
+	return tools, errors
 }

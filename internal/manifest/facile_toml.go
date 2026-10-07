@@ -63,39 +63,15 @@ func parseMiseTomlFacade(raw []byte) (*FacileToml, error) {
 // to the tool name; SrcSubdir defaults to ".". Returns an error
 // when VersionPattern is invalid.
 func (ft *FacileToml) ToTool() (Tool, error) {
-	branch, build, bin, srcSubdir := ft.Branch, ft.Build, ft.Bin, ft.SrcSubdir
-	if branch == "" {
-		branch = "main"
-	}
-	if build == "" {
-		build = "go"
-	}
-	if bin == "" {
-		bin = ft.Name
-	}
-	if srcSubdir == "" {
-		srcSubdir = "."
-	}
 	if ft.VersionPattern != "" && !validateVersionPattern(ft.VersionPattern) {
 		return Tool{}, fmt.Errorf("facile.toml: invalid versionPattern: %s", ft.VersionPattern)
 	}
-	return Tool{
-		Name:         ft.Name,
-		Summary:      ft.Summary,
-		Repo:         ft.Repo,
-		Branch:       branch,
-		Bin:          bin,
-		Build:        build,
-		SrcSubdir:    srcSubdir,
-		Asset:        ft.Asset,
-		Skill:        ft.Skill,
-		GoVersionVar: ft.GoVersionVar,
-		Requires:     ft.Requires,
-		VersionDetection: VersionDetection{
-			Cmd:     ft.VersionCmd,
-			Pattern: ft.VersionPattern,
-		},
-	}, nil
+	return rawTool{
+		name: ft.Name, summary: ft.Summary, repo: ft.Repo, branch: ft.Branch,
+		build: ft.Build, bin: ft.Bin, srcSubdir: ft.SrcSubdir, asset: ft.Asset,
+		skill: ft.Skill, goVersionVar: ft.GoVersionVar, requires: ft.Requires,
+		versionCmd: ft.VersionCmd, versionPattern: ft.VersionPattern,
+	}.toTool(), nil
 }
 
 // facileTomlRaw is a minimal TOML decoder used only to probe for the
