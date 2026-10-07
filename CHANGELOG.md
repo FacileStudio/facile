@@ -10,6 +10,12 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.15.1] — 2026-10-07
+
+### Changed
+
+- Single source entries with `repo:` but no `name:` now auto-discover the tool from the repo's `facile.toml` or `mise.toml`/`[facile]` block. `~/facile.yml` needs only `repo: owner/repo` per entry.
+
 ## [0.15.0] — 2026-10-07
 
 ### Added
@@ -352,7 +358,8 @@ record what shipped rather than what was written down at the time.
 - First release. One installer for the whole suite, with a bootstrap script,
   tests and CI.
 
-[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.15.1...HEAD
+[0.15.1]: https://github.com/FacileStudio/facile/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/FacileStudio/facile/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/FacileStudio/facile/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/FacileStudio/facile/compare/v0.13.0...v0.14.0
