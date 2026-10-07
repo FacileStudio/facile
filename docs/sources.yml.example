@@ -1,0 +1,19 @@
+# User-defined sources for facile.
+# Place at ~/facile.yml (preferred) or ~/.config/facile/sources.yml.
+
+# Single tools declared inline.
+single:
+  - name: my-tool
+    summary: "A short description"
+    repo: owner/repo
+    branch: main
+    bin: my-tool
+    build: go
+    # versionCmd: my-tool --version
+    # versionPattern: "v(\\d+\\.\\d+\\.\\d+)"
+
+# Lists of repos to discover. Each list URL returns one repo per line
+# (owner/repo) or a PEP 503 simple index.
+lists:
+  - name: my-list
+    url: https://example.com/facile-repos.txt

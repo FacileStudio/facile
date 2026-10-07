@@ -35,7 +35,7 @@ func TestUpToDateSkipsOnlyAnExactVersionMatch(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			stubLatestTag(t, func(string) (string, error) { return tc.tag, tc.err })
-			if got := upToDate(tc.have, tool); got != tc.want {
+			if got := upToDate(tc.have, "", tool); got != tc.want {
 				t.Fatalf("upToDate(%q, tag %q) = %v, want %v", tc.have, tc.tag, got, tc.want)
 			}
 		})
@@ -48,7 +48,7 @@ func TestUpToDateNeverSkipsASourceOnlyTool(t *testing.T) {
 	stubLatestTag(t, func(string) (string, error) { return "v0.1.0", nil })
 
 	tool := manifest.Tool{Name: "opus", Bin: "opus", Repo: "FacileStudio/opus"}
-	if upToDate("opus 0.1.0", tool) {
+	if upToDate("opus 0.1.0", "", tool) {
 		t.Fatal("a tool with no asset has no release to compare against")
 	}
 }
@@ -109,4 +109,65 @@ func stubBinary(t *testing.T, dir, bin, line string) {
 	if err := os.WriteFile(filepath.Join(dir, bin), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestUpToDateWithVersionPattern(t *testing.T) {
+	dir := t.TempDir()
+
+	stubBinary(t, dir, "opus", "opus v1.2.3 (abc123)")
+	stubBinary(t, dir, "opus-old", "opus v1.1.0 (def456)")
+	stubBinary(t, dir, "baz", "baz tool 2.0.0 linux/amd64")
+
+	cases := []struct {
+		path, have, versionPattern, tag string
+		want                            bool
+	}{
+		{filepath.Join(dir, "opus"), "opus v1.2.3 (abc123)", `v(\d+\.\d+\.\d+)`, "v1.2.3", true},
+		{filepath.Join(dir, "opus-old"), "opus v1.1.0 (def456)", `v(\d+\.\d+\.\d+)`, "v1.2.3", false},
+		{filepath.Join(dir, "baz"), "baz tool 2.0.0 linux/amd64", `\d+\.\d+\.\d+`, "v2.0.0", true},
+		{filepath.Join(dir, "opus"), "opus v1.2.3 (abc123)", `release-(\d+\.\d+\.\d+)`, "v1.2.3", false},
+	}
+
+	for _, tc := range cases {
+		t.Run("", func(t *testing.T) {
+			tool := manifest.Tool{
+				Name: "opus", Bin: "opus", Asset: "opus", Repo: "FacileStudio/opus",
+				VersionDetection: manifest.VersionDetection{Pattern: tc.versionPattern},
+			}
+			stubLatestTag(t, func(string) (string, error) { return tc.tag, nil })
+			if got := upToDate(tc.have, tc.path, tool); got != tc.want {
+				t.Fatalf("upToDate(%q, %q, pattern %q, tag %q) = %v, want %v",
+					tc.have, tc.path, tc.versionPattern, tc.tag, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestUpToDateWithVersionCmd(t *testing.T) {
+	dir := t.TempDir()
+	missingDir := t.TempDir()
+
+	stubBinary(t, dir, "opus", "opus v1.2.3 (abc123)")
+
+	t.Run("versionCmd runs a non-default flag", func(t *testing.T) {
+		tool := manifest.Tool{
+			Name: "opus", Bin: "opus", Asset: "opus", Repo: "FacileStudio/opus",
+			VersionDetection: manifest.VersionDetection{Cmd: "version", Pattern: `v(\d+\.\d+\.\d+)`},
+		}
+		stubLatestTag(t, func(string) (string, error) { return "v1.2.3", nil })
+		if got := upToDate("opus 1.2.3", filepath.Join(dir, "opus"), tool); !got {
+			t.Fatal("versionCmd 'version' should return v1.2.3 and match tag v1.2.3")
+		}
+	})
+
+	t.Run("versionCmd fails, falls through to heuristic", func(t *testing.T) {
+		tool := manifest.Tool{
+			Name: "opus", Bin: "opus", Asset: "opus", Repo: "FacileStudio/opus",
+			VersionDetection: manifest.VersionDetection{Cmd: "version", Pattern: `v(\d+\.\d+\.\d+)`},
+		}
+		stubLatestTag(t, func(string) (string, error) { return "v1.2.3", nil })
+		if got := upToDate("opus 1.2.3", filepath.Join(missingDir, "missing"), tool); !got {
+			t.Fatal("fallback heuristic should match 'opus 1.2.3' against tag v1.2.3")
+		}
+	})
 }

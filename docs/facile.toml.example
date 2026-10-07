@@ -1,0 +1,12 @@
+# Example facile.toml for an external Go tool.
+# Place this at the repo root — facile discovers it when the repo is added
+# to a sources list or user sources file.
+
+name = "my-tool"
+summary = "A short description"
+repo = "owner/repo"
+branch = "main"
+bin = "my-tool"
+build = "go"
+# versionCmd = "my-tool --version"
+# versionPattern = "v(\\d+\\.\\d+\\.\\d+)"

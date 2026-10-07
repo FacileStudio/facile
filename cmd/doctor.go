@@ -29,6 +29,7 @@ func NewDoctorCommand() *cobra.Command {
 			problems += checkCatalog()
 			problems += checkStaged(dir)
 			problems += checkSelfCopies()
+			problems += checkSources()
 
 			if problems == 0 {
 				ui.Success("Everything looks healthy")
@@ -55,8 +56,6 @@ func checkBinDir(dir string) int {
 	return 0
 }
 
-// checkTools runs every installed binary and looks for a same-named binary
-// earlier on PATH, which is the usual cause of "I updated it and nothing changed".
 func checkTools(dir string) int {
 	problems := 0
 	installedAny := false
@@ -81,9 +80,6 @@ func checkTools(dir string) int {
 	return problems
 }
 
-// checkShadow resolves both sides before comparing. Resolving only the one
-// found on PATH reports every install under a symlinked directory as its own
-// impostor, and on macOS /tmp is such a directory.
 func checkShadow(tool manifest.Tool, dir string) int {
 	found, err := exec.LookPath(tool.Bin)
 	if err != nil {
@@ -104,12 +100,6 @@ func checkCatalog() int {
 	return 0
 }
 
-// checkSelfCopies walks PATH for facile binaries other than the running one.
-// checkShadow cannot cover this: it compares against the catalog bin dir, and
-// facile is not a catalog tool. The failure it catches is specific — a self
-// update writes to the running binary's own directory, so a second copy earlier
-// on PATH keeps answering with the old version and the update looks like it did
-// nothing.
 func checkSelfCopies() int {
 	seen := map[string]bool{realPath(executable()): true}
 	var others []string
@@ -135,14 +125,6 @@ func checkSelfCopies() int {
 	return 1
 }
 
-// reportSelf resolves facile's own tag rather than reading the cache: doctor is
-// the command a user runs when something is wrong, and answering that from a
-// day-old file is how you tell someone they are current when they are two
-// releases behind.
-//
-// It counts as no problem and cannot fail the command. An old facile installs
-// tools perfectly well, and a health check that goes red on every release would
-// be red more often than it is useful.
 func reportSelf(version string) {
 	tag, outdated := selfOutdated(selfLatest(), version)
 	if !outdated {
@@ -153,7 +135,6 @@ func reportSelf(version string) {
 	ui.Hint("%s", upgradeHint())
 }
 
-// checkStaged looks for the temporary files an interrupted install leaves behind.
 func checkStaged(dir string) int {
 	matches, err := filepath.Glob(filepath.Join(dir, ".*.new.*"))
 	if err != nil || len(matches) == 0 {

@@ -2,57 +2,6 @@ package manifest
 
 import "strings"
 
-// Auth describes how a tool authenticates and, crucially, where it expects to
-// find its credential afterwards. `facile login` drives the flow and then writes
-// the result into that exact location, so the tool itself needs no change to
-// benefit. Every field here was read off a real CLI, not invented.
-type Auth struct {
-	// Kind is the flow facile runs: none, sso, oidc-device, password, device
-	// or token. "token" means the credential is minted elsewhere and pasted
-	// in. "device" is a tool's own headless endpoints; "oidc-device" is the
-	// RFC 8628 grant at the shared identity provider, and the two are not the
-	// same protocol — the prefix is there so the difference is visible here.
-	Kind string `yaml:"kind"`
-
-	// DefaultServerURL may be empty. A self-hosted appliance is right to refuse
-	// to guess an address, so an empty default means facile must ask.
-	DefaultServerURL string `yaml:"defaultServerUrl"`
-
-	// APISuffix is appended when the user gives a bare origin. Some CLIs store
-	// the API root rather than the site root and 404 on everything without it.
-	APISuffix string `yaml:"apiSuffix"`
-
-	// DiscoveryPath returns {sso_only, oidc_enabled} so facile can pick a flow
-	// without asking the user what their instance is configured for.
-	DiscoveryPath string `yaml:"discoveryPath"`
-
-	// Flows and Env are grouped rather than listed so this struct stays under
-	// filet's field cap as kinds are added. Both are inlined: the YAML is flat
-	// and unchanged, and Go promotes the fields, so a.SSO and a.EnvToken still
-	// read the way they always did.
-	Flows `yaml:",inline"`
-
-	// IdentityPath is fetched after login purely to name who signed in.
-	IdentityPath string `yaml:"identityPath"`
-
-	// TokenPath is the page where a human mints the credential by hand, for
-	// the tools that have no login endpoint to drive. facile opens it rather
-	// than telling the user to go and find it.
-	TokenPath string `yaml:"tokenPath"`
-
-	// Transport is how the credential is later presented: bearer or cookie.
-	Transport  string `yaml:"transport"`
-	CookieName string `yaml:"cookieName"`
-
-	Env `yaml:",inline"`
-
-	Store *Store `yaml:"store"`
-
-	// Note explains a tool that cannot be logged into, so facile can say why
-	// instead of pretending the command did something.
-	Note string `yaml:"note"`
-}
-
 // Flows are the four handshakes a tool can declare. A tool may declare several
 // — a device sign-in keeps its loopback flow, and both keep the tool's own
 // password endpoint — and Kind says which one facile prefers.

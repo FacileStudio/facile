@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -61,8 +63,6 @@ func runUpdate(c *cobra.Command, args []string) error {
 
 var latestTagFn = installer.LatestTag
 
-// stale drops the tools whose installed binary already reports the latest
-// published version, and reports each one it dropped.
 func stale(c *cobra.Command, tools []manifest.Tool) []manifest.Tool {
 	dir := binDir(c)
 	current := checkAll(tools, dir)
@@ -78,7 +78,6 @@ func stale(c *cobra.Command, tools []manifest.Tool) []manifest.Tool {
 	return keep
 }
 
-// checkAll resolves every tool's installed version in parallel.
 func checkAll(tools []manifest.Tool, dir string) []string {
 	current := make([]string, len(tools))
 	var wg sync.WaitGroup
@@ -92,16 +91,17 @@ func checkAll(tools []manifest.Tool, dir string) []string {
 }
 
 // checkOne resolves one tool's installed version and its latest tag.
+// have comes from installer.Installed; when ok is false, upToDate is
+// never called, so have is never empty at that call site.
 func checkOne(tool manifest.Tool, dir string, i int, current []string) {
-	if have, ok := installer.Installed(dir, tool.Bin); ok && upToDate(have, tool) {
+	path := filepath.Join(dir, tool.Bin)
+	if have, ok := installer.Installed(dir, tool.Bin); ok && upToDate(have, path, tool) {
 		current[i] = have
 	}
 }
 
-// upToDate compares the version the installed binary reports against the latest
-// release tag.
-func upToDate(have string, tool manifest.Tool) bool {
-	if have == "" || tool.Asset == "" {
+func upToDate(have, path string, tool manifest.Tool) bool {
+	if tool.Asset == "" {
 		return false
 	}
 	tag, err := latestTagFn(tool.Repo)
@@ -109,6 +109,13 @@ func upToDate(have string, tool manifest.Tool) bool {
 		return false
 	}
 	expected := strings.TrimPrefix(tag, "v")
+
+	if have == "" {
+		return false
+	}
+	if v := versionFromPattern(have, path, tool); v != "" {
+		return strings.TrimPrefix(v, "v") == expected
+	}
 	if matchesVersion(have, tool, expected) {
 		return true
 	}
@@ -119,7 +126,21 @@ func upToDate(have string, tool manifest.Tool) bool {
 	return installed != "" && installed == expected
 }
 
-// matchesVersion is true when the reported version line states the tag.
+func versionFromPattern(have, path string, tool manifest.Tool) string {
+	if tool.VersionDetection.Pattern == "" {
+		return ""
+	}
+	output := have
+	if tool.VersionDetection.Cmd != "" {
+		out, err := exec.Command(path, strings.Fields(tool.VersionDetection.Cmd)...).Output()
+		if err != nil {
+			return ""
+		}
+		output = string(out)
+	}
+	return manifest.MatchVersion(output, tool.VersionDetection.Pattern)
+}
+
 func matchesVersion(have string, tool manifest.Tool, expected string) bool {
 	parts := strings.Fields(have)
 	if len(parts) >= 2 && parts[0] == tool.Bin && parts[1] == expected {

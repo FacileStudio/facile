@@ -14,6 +14,10 @@ set -euo pipefail
 REPO="FacileStudio/facile"
 BIN="facile"
 
+# External repos can ship a facile.toml (or a [facile] block in mise.toml) at
+# their root to declare how facile should install them. Users can also define
+# additional tools in ~/facile.yml or ~/.config/facile/sources.yml.
+
 # --- output -----------------------------------------------------------------
 
 setup_colors() {
