@@ -10,6 +10,12 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.15.3] — 2026-10-07
+
+### Fixed
+
+- Source-only tools (no `asset` in `facile.toml`) were always reinstalled by `facile update`, even when the installed binary reported the exact version of the latest tag. The `Asset` gate in `upToDate` predated `matchesVersion` and `versionFromPattern`, which handle non-standard version lines correctly. Removed the early return — a source-only tool now compares against its latest tag and is skipped when current.
+
 ## [0.15.2] — 2026-10-07
 
 ### Changed
@@ -369,7 +375,8 @@ record what shipped rather than what was written down at the time.
 - First release. One installer for the whole suite, with a bootstrap script,
   tests and CI.
 
-[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.15.2...HEAD
+[Unreleased]: https://github.com/FacileStudio/facile/compare/v0.15.3...HEAD
+[0.15.3]: https://github.com/FacileStudio/facile/compare/v0.15.2...v0.15.3
 [0.15.2]: https://github.com/FacileStudio/facile/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/FacileStudio/facile/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/FacileStudio/facile/compare/v0.14.1...v0.15.0

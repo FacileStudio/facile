@@ -101,9 +101,6 @@ func checkOne(tool manifest.Tool, dir string, i int, current []string) {
 }
 
 func upToDate(have, path string, tool manifest.Tool) bool {
-	if tool.Asset == "" {
-		return false
-	}
 	tag, err := latestTagFn(tool.Repo)
 	if err != nil {
 		return false

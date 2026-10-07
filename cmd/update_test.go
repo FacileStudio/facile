@@ -42,15 +42,25 @@ func TestUpToDateSkipsOnlyAnExactVersionMatch(t *testing.T) {
 	}
 }
 
-// A tool with no release archive only ever installs from source, where there is
-// no tag to compare against.
-func TestUpToDateNeverSkipsASourceOnlyTool(t *testing.T) {
+// A tool with no release asset can still be compared against the latest tag.
+// The binary reports its own version; the tag comes from GitHub releases. The
+// two are independent of whether a binary was published as an archive.
+func TestUpToDateChecksSourceOnlyToolsAgainstTheLatestTag(t *testing.T) {
 	stubLatestTag(t, func(string) (string, error) { return "v0.1.0", nil })
 
 	tool := manifest.Tool{Name: "opus", Bin: "opus", Repo: "FacileStudio/opus"}
-	if upToDate("opus 0.1.0", "", tool) {
-		t.Fatal("a tool with no asset has no release to compare against")
-	}
+
+	t.Run("matching version is up to date", func(t *testing.T) {
+		if !upToDate("opus 0.1.0", "", tool) {
+			t.Fatal("a source-only tool whose version matches the latest tag should be up to date")
+		}
+	})
+
+	t.Run("mismatched version is not up to date", func(t *testing.T) {
+		if upToDate("opus 0.0.9", "", tool) {
+			t.Fatal("a source-only tool whose version is behind should not be up to date")
+		}
+	})
 }
 
 // stale runs its checks concurrently, so the thing to pin is that every result
