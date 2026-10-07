@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -75,9 +76,25 @@ func collectLayers(cfg SourceConfig, version int) ([]string, []*Manifest) {
 	var loadErrors []string
 	var layers []*Manifest
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	if len(cfg.Single) > 0 {
 		singleLayer := &Manifest{Version: version}
 		for _, s := range cfg.Single {
+			if s.Repo != "" && s.Name == "" {
+				tool, err := discoverTool(ctx, s.Repo)
+				if err != nil {
+					loadErrors = append(loadErrors, fmt.Sprintf("discovering %s: %s", s.Repo, err))
+					continue
+				}
+				if tool == nil {
+					loadErrors = append(loadErrors, fmt.Sprintf("no facile.toml or [facile] block found in %s", s.Repo))
+					continue
+				}
+				singleLayer.Tools = append(singleLayer.Tools, *tool)
+				continue
+			}
 			tool, err := s.ToTool()
 			if err != nil {
 				loadErrors = append(loadErrors, err.Error())
@@ -89,8 +106,6 @@ func collectLayers(cfg SourceConfig, version int) ([]string, []*Manifest) {
 	}
 
 	if len(cfg.Lists) > 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
 		discovered, errs := DiscoverToolsFromListSources(ctx, cfg)
 		for _, e := range errs {
 			loadErrors = append(loadErrors, e.Error())
