@@ -10,6 +10,16 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-10-10
+
+### Changed
+
+- The user sources file is `~/.facile.yml`, not `~/facile.yml`. The dotfile matches every other suite config and was wrong from the day it shipped; a sources file left at the old path is no longer read. `~/.config/facile/sources.yml` is untouched as the fallback.
+
+### Added
+
+- README documents the sources system: how to set up `~/.facile.yml`, what `single` and `lists` accept, how discovery, merging and failures behave, and where the worked examples live.
+
 ## [0.15.4] — 2026-10-07
 
 ### Fixed
