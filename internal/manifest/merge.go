@@ -47,7 +47,7 @@ func Merge(base *Manifest, layers ...*Manifest) *Manifest {
 }
 
 // mergeCatalogs overlays user sources on top of the base manifest.
-// User sources are loaded from ~/facile.yml or ~/.config/facile/sources.yml
+// User sources are loaded from ~/.facile.yml or ~/.config/facile/sources.yml
 // (first found wins), including repos discovered via list sources. A broken
 // or missing sources file is never fatal — the base is returned unchanged.
 // Non-fatal merge errors (unreachable list URLs, unparseable repo configs,

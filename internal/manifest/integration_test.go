@@ -13,7 +13,7 @@ func TestIntegrationSourcesFileLoading(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
 
-		sourcesPath := filepath.Join(home, "facile.yml")
+		sourcesPath := filepath.Join(home, ".facile.yml")
 		content := `single:
   - name: mytool
     repo: me/mytool
@@ -52,7 +52,7 @@ lists:
 		home := t.TempDir()
 		t.Setenv("HOME", home)
 
-		homeFile := filepath.Join(home, "facile.yml")
+		homeFile := filepath.Join(home, ".facile.yml")
 		xdgFile := filepath.Join(home, ".config", "facile", "sources.yml")
 
 		if err := os.MkdirAll(filepath.Dir(xdgFile), 0o755); err != nil {
@@ -102,7 +102,7 @@ func TestIntegrationCatalogMergingWithSingleSources(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
 
-		sourcesPath := filepath.Join(home, "facile.yml")
+		sourcesPath := filepath.Join(home, ".facile.yml")
 		sourcesContent := `single:
   - name: sablier
     repo: me/my-sablier-fork
@@ -156,7 +156,7 @@ func TestIntegrationCatalogMergingWithSingleSources(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
 
-		sourcesPath := filepath.Join(home, "facile.yml")
+		sourcesPath := filepath.Join(home, ".facile.yml")
 		sourcesContent := `single:
   - name: mytool
     repo: me/mytool
@@ -182,7 +182,7 @@ func TestIntegrationCatalogMergingWithSingleSources(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
 
-		sourcesPath := filepath.Join(home, "facile.yml")
+		sourcesPath := filepath.Join(home, ".facile.yml")
 		sourcesContent := `single:
   - name: mytool
     repo: me/mytool
@@ -399,13 +399,13 @@ versionPattern = "[bad"
 
 	t.Run("facile.toml ToTool with explicit values preserved", func(t *testing.T) {
 		ft := &FacileToml{
-			Name:      "mycli",
-			Repo:      "me/mycli",
-			Branch:    "develop",
-			Build:     "rust",
-			Bin:       "mc",
-			SrcSubdir: "src",
-			Skill:     "myskill",
+			Name:           "mycli",
+			Repo:           "me/mycli",
+			Branch:         "develop",
+			Build:          "rust",
+			Bin:            "mc",
+			SrcSubdir:      "src",
+			Skill:          "myskill",
 			VersionCmd:     "mc version",
 			VersionPattern: "v(\\d+\\.\\d+\\.\\d+)",
 		}
@@ -774,8 +774,8 @@ func TestIntegrationSingleSourceToTool(t *testing.T) {
 
 	t.Run("invalid versionPattern returns error", func(t *testing.T) {
 		s := &SingleSource{
-			Name:    "mycli",
-			Repo:    "me/mycli",
+			Name: "mycli",
+			Repo: "me/mycli",
 			VersionDetection: VersionDetection{
 				Pattern: "[",
 			},
@@ -816,7 +816,7 @@ func TestIntegrationLoadBaseVsLoad(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
 
-		sourcesPath := filepath.Join(home, "facile.yml")
+		sourcesPath := filepath.Join(home, ".facile.yml")
 		sourcesContent := `single:
   - name: integration-test-tool
     repo: me/integration-test
@@ -841,7 +841,7 @@ func TestIntegrationLoadBaseVsLoad(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
 
-		sourcesPath := filepath.Join(home, "facile.yml")
+		sourcesPath := filepath.Join(home, ".facile.yml")
 		sourcesContent := `single:
   - name: integration-test-tool
     repo: me/integration-test
