@@ -147,6 +147,62 @@ tool never means reinstalling facile.
 
 **Note**: `facile install bulle` installs the terminal coding agent, previously known as `nacelle`.
 
+## Extending the catalog
+
+The catalog is not closed. Create `~/.facile.yml` (or
+`~/.config/facile/sources.yml`, checked second) and every tool you name there
+joins the catalog on the next command. The first file that exists is the only
+one read; if neither exists, you get the suite catalog alone.
+
+```yaml
+# ~/.facile.yml
+single:
+  - repo: owner/minimal
+  - name: my-tool
+    summary: A short description
+    repo: owner/my-tool
+    branch: main
+    bin: my-tool
+    build: rust
+    versionCmd: my-tool --version
+    versionPattern: "v(\\d+\\.\\d+\\.\\d+)"
+
+lists:
+  - name: my tools
+    url: https://example.com/facile-repos.txt
+```
+
+**`single`** declares one tool per entry. An entry with only `repo:` is
+enough: facile fetches that repo's `facile.toml`, or its `[facile]` block in
+`mise.toml`, and takes the description from there. Fill in the fields to skip
+that lookup and describe the tool here instead. Defaults are `branch: main`,
+`build: go`, `bin` = `name`, `srcSubdir: .`. `versionCmd` and
+`versionPattern` teach `list` and `update` how to read your tool's version
+string; without them the plain `--version` line is parsed.
+
+**`lists`** names a URL that returns repos to discover. The URL may return
+one `owner/repo` per line, skipping blank lines and `#` comments, or a PEP 503
+simple index (HTML with links like `/owner/repo/`). Each repo is probed for
+`facile.toml` first, then `mise.toml`, on `main` then `master`. List
+responses are cached for a day under `~/.cache/facile/lists`, so only the
+first load of a new list pays the fetch.
+
+Your entries merge over the suite catalog by name, case-insensitively: a
+`single` entry called `sablier` replaces the suite's `sablier` for you, and
+new names are appended. Nothing here is fatal. A broken file, an unreachable
+list URL or a repo with no `facile.toml` leaves the suite catalog working and
+is reported by `facile doctor`, which also names the sources file in effect
+and warns when one of your entries shadows a suite tool.
+
+Tools added this way install, update and list like any others. They carry no
+`auth:` block, so `facile login` has nothing to run for them. Setting
+`FACILE_CATALOG` to a local file replaces the whole catalog, sources
+included; it is the escape hatch for editing the catalog itself.
+
+Two ready-made files: [`docs/sources.yml.example`](docs/sources.yml.example)
+and [`docs/facile.toml.example`](docs/facile.toml.example), the second one
+for a repo that wants to describe itself to facile.
+
 ## Why this exists
 
 Every suite CLI used to carry its own copy of a 273-line `install.sh`. The rule
