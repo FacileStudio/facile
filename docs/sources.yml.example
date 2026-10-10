@@ -1,5 +1,5 @@
 # User-defined sources for facile.
-# Place at ~/facile.yml (preferred) or ~/.config/facile/sources.yml.
+# Place at ~/.facile.yml (preferred) or ~/.config/facile/sources.yml.
 
 # Single tools declared inline.
 single:
