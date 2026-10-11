@@ -10,6 +10,8 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.16.1] — 2026-10-11
+
 ### Changed
 
 - `install.sh` is now strictly POSIX-compliant `/bin/sh` without bashisms, and `curl ... | sh` replaces `curl ... | bash` in documentation.
