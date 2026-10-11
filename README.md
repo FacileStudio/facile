@@ -150,42 +150,45 @@ tool never means reinstalling facile.
 ## Extending the catalog
 
 The catalog is not closed. Create `~/.facile.yml` (or
-`~/.config/facile/sources.yml`, checked second) and every tool you name there
+`~/.config/facile/config.yml`, checked second, or
+`~/.config/facile/sources.yml`) and every tool you name there
 joins the catalog on the next command. The first file that exists is the only
-one read; if neither exists, you get the suite catalog alone.
+one read; if none exists, you get the suite catalog alone.
 
 ```yaml
-# ~/.facile.yml
-single:
-  - repo: owner/minimal
-  - name: my-tool
-    summary: A short description
-    repo: owner/my-tool
-    branch: main
-    bin: my-tool
-    build: rust
-    versionCmd: my-tool --version
-    versionPattern: "v(\\d+\\.\\d+\\.\\d+)"
+# ~/.config/facile/config.yml or ~/.facile.yml
+palette: saravenpi/palette
+ripgrep: BurntSushi/ripgrep@14.1.0
+
+# Tools needing explicit build configuration:
+my-tool:
+  summary: A short description
+  repo: owner/my-tool
+  branch: main
+  bin: my-tool
+  build: rust
+  versionCmd: my-tool --version
+  versionPattern: "v(\\d+\\.\\d+\\.\\d+)"
 
 lists:
-  - name: my tools
-    url: https://example.com/facile-repos.txt
+  - https://example.com/facile-repos.txt
 ```
 
-**`single`** declares one tool per entry. An entry with only `repo:` is
-enough: facile fetches that repo's `facile.toml`, or its `[facile]` block in
-`mise.toml`, and takes the description from there. Fill in the fields to skip
-that lookup and describe the tool here instead. Defaults are `branch: main`,
-`build: go`, `bin` = `name`, `srcSubdir: .`. `versionCmd` and
-`versionPattern` teach `list` and `update` how to read your tool's version
-string; without them the plain `--version` line is parsed.
+Declare tools directly at the root by mapping tool names to repos (`name: owner/repo`).
+Add `@branch` or `@tag` to pin a ref. facile discovers `facile.toml` or `[facile]` in
+`mise.toml` from the repo. When neither exists, sensible defaults apply: `bin` defaults
+to the tool name, `build` to `go`, and `branch` to `main`.
 
-**`lists`** names a URL that returns repos to discover. The URL may return
+Pass a mapping under the tool name to override fields or configure source builds.
+`versionCmd` and `versionPattern` teach `list` and `update` how to read your tool's
+version string; without them the plain `--version` line is parsed. Legacy `single:`
+blocks remain fully supported.
+
+**`lists`** names URLs that return repos to discover. Each URL may return
 one `owner/repo` per line, skipping blank lines and `#` comments, or a PEP 503
 simple index (HTML with links like `/owner/repo/`). Each repo is probed for
 `facile.toml` first, then `mise.toml`, on `main` then `master`. List
-responses are cached for a day under `~/.cache/facile/lists`, so only the
-first load of a new list pays the fetch.
+responses are cached for a day under `~/.cache/facile/lists`.
 
 Your entries merge over the suite catalog by name, case-insensitively: a
 `single` entry called `sablier` replaces the suite's `sablier` for you, and

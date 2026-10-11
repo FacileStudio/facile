@@ -103,20 +103,7 @@ func processSingleSources(ctx context.Context, singles []SingleSource) ([]Tool, 
 	var errors []string
 
 	for _, s := range singles {
-		if s.Repo != "" && s.Name == "" {
-			tool, err := discoverTool(ctx, s.Repo)
-			if err != nil {
-				errors = append(errors, fmt.Sprintf("discovering %s: %s", s.Repo, err))
-				continue
-			}
-			if tool == nil {
-				errors = append(errors, fmt.Sprintf("no facile.toml or [facile] block found in %s", s.Repo))
-				continue
-			}
-			tools = append(tools, *tool)
-			continue
-		}
-		tool, err := s.ToTool()
+		tool, err := resolveSingleSource(ctx, s)
 		if err != nil {
 			errors = append(errors, err.Error())
 			continue
@@ -124,4 +111,53 @@ func processSingleSources(ctx context.Context, singles []SingleSource) ([]Tool, 
 		tools = append(tools, tool)
 	}
 	return tools, errors
+}
+
+func resolveSingleSource(ctx context.Context, s SingleSource) (Tool, error) {
+	if s.Repo != "" && (s.Name == "" || (s.Build == "" && s.Bin == "")) {
+		discovered, err := discoverSingle(ctx, s)
+		if err != nil {
+			return Tool{}, err
+		}
+		if discovered != nil {
+			return *discovered, nil
+		}
+	}
+	return s.ToTool()
+}
+
+func discoverSingle(ctx context.Context, s SingleSource) (*Tool, error) {
+	tool, err := discoverTool(ctx, s.Repo)
+	if err != nil {
+		return nil, fmt.Errorf("discovering %s: %w", s.Repo, err)
+	}
+	if tool != nil {
+		applySingleOverrides(tool, s)
+		return tool, nil
+	}
+	if s.Name == "" {
+		return nil, fmt.Errorf("no facile.toml or [facile] block found in %s", s.Repo)
+	}
+	return nil, nil
+}
+
+func applySingleOverrides(t *Tool, s SingleSource) {
+	if s.Name != "" {
+		t.Name = s.Name
+	}
+	if s.Branch != "" {
+		t.Branch = s.Branch
+	}
+	if s.Bin != "" {
+		t.Bin = s.Bin
+	}
+	if s.Build != "" {
+		t.Build = s.Build
+	}
+	if s.Asset != "" {
+		t.Asset = s.Asset
+	}
+	if s.Summary != "" {
+		t.Summary = s.Summary
+	}
 }
