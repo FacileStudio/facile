@@ -10,6 +10,10 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+### Changed
+
+- `install.sh` is now strictly POSIX-compliant `/bin/sh` without bashisms, and `curl ... | sh` replaces `curl ... | bash` in documentation.
+
 ### Added
 
 - Support for `~/.config/facile/config.yml` (honoring `$XDG_CONFIG_HOME`) as the standard XDG configuration path between `~/.facile.yml` and `sources.yml`.

@@ -1,15 +1,17 @@
-#!/usr/bin/env bash
+#!/bin/sh
 #
 # Bootstrap installer for facile, the Facile Studio suite installer.
 #
 # Every statement sits inside a function and main() is the last line, so a
 # download truncated mid-flight executes nothing at all. This is the single
-# most important property of a `curl | bash` script and it is not negotiable.
+# most important property of a `curl | sh` script and it is not negotiable.
 #
 # Once facile is on your PATH, it installs everything else:
 #   facile install
 
-set -euo pipefail
+set -eu
+# shellcheck disable=SC3040
+set -o pipefail 2>/dev/null || true
 
 REPO="FacileStudio/facile"
 BIN="facile"
@@ -22,8 +24,12 @@ BIN="facile"
 
 setup_colors() {
   if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != "dumb" ]; then
-    C_INFO=$'\033[36m' C_OK=$'\033[32m' C_WARN=$'\033[33m' C_ERR=$'\033[31m'
-    C_DIM=$'\033[2m' C_OFF=$'\033[0m'
+    C_INFO=$(printf '\033[36m')
+    C_OK=$(printf '\033[32m')
+    C_WARN=$(printf '\033[33m')
+    C_ERR=$(printf '\033[31m')
+    C_DIM=$(printf '\033[2m')
+    C_OFF=$(printf '\033[0m')
   else
     C_INFO="" C_OK="" C_WARN="" C_ERR="" C_DIM="" C_OFF=""
   fi
@@ -36,6 +42,14 @@ hint() { printf '  %s%s%s\n' "$C_DIM" "$*" "$C_OFF"; }
 die()  { printf '%s✗%s %s\n' "$C_ERR" "$C_OFF" "$*" >&2; exit 1; }
 
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 not found — $2"; }
+
+tilde() {
+  case "$1" in
+    "$HOME"/*) printf '%s/%s' '~' "${1#"$HOME"/}" ;;
+    "$HOME") printf '~' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
 
 usage() {
   cat <<EOF
@@ -130,7 +144,6 @@ install_from_release() {
   command -v curl >/dev/null 2>&1 || return 1
   command -v tar >/dev/null 2>&1 || return 1
 
-  local tag ver archive base
   tag="$VERSION"
   [ -n "$tag" ] || tag="$(latest_tag)"
   [ -n "$tag" ] || return 1
@@ -152,7 +165,8 @@ install_from_release() {
 # verify_checksum aborts on a mismatch and never falls back. A wrong hash means
 # something is wrong with the artifact, not with the network.
 verify_checksum() {
-  local dir="$1" file="$2" sum
+  dir="$1"
+  file="$2"
   if command -v sha256sum >/dev/null 2>&1; then
     sum="$(cd "$dir" && sha256sum "$file")"
   elif command -v shasum >/dev/null 2>&1; then
@@ -173,7 +187,6 @@ install_from_source() {
     die "cannot clone $REPO"
 
   info "Building from source"
-  local ver
   ver="$(git -C "$WORK/src" describe --tags --always 2>/dev/null || echo dev)"
   (cd "$WORK/src" && go build -trimpath -ldflags "-s -w -X main.version=${ver#v}" \
     -o "$WORK/out/$BIN" .)
@@ -183,7 +196,8 @@ install_from_source() {
 # atomic_install stages beside the destination and renames, so replacing facile
 # while it is running cannot corrupt the running image.
 atomic_install() {
-  local src="$1" dest="$2" staged
+  src="$1"
+  dest="$2"
   staged="$(dirname "$dest")/.$(basename "$dest").new.$$"
   install -m 755 "$src" "$staged" || die "cannot write $staged"
   mv -f "$staged" "$dest" || { rm -f "$staged"; die "cannot write $dest"; }
@@ -199,6 +213,7 @@ PATH_MARKER='# facile installer'
 
 # path_literal keeps the entry portable: written as $HOME/... it survives a home
 # directory that moves and a dotfile repo shared across machines.
+# shellcheck disable=SC2016
 path_literal() {
   case "$BIN_DIR" in
     "$HOME"/*) printf '$HOME/%s' "${BIN_DIR#"$HOME"/}" ;;
@@ -210,8 +225,10 @@ path_literal() {
 # files get sourced twice in more setups than you would expect — a .bash_profile
 # that sources .bashrc, a login shell inside tmux — and a runtime guard makes
 # that harmless instead of leaving duplicates in PATH.
+# shellcheck disable=SC2016
 path_snippet() {
-  local kind="$1" dir="$2"
+  kind="$1"
+  dir="$2"
   case "$kind" in
     fish)
       printf '\n%s\nif not contains %s $PATH\n    set -gx PATH %s $PATH\nend\n' \
@@ -227,12 +244,12 @@ path_snippet() {
 # uses_shell is true when the machine has the shell at all: the binary exists,
 # it is the login shell, or it has already left a config file behind.
 uses_shell() {
-  local name="$1" f
+  shell_name="$1"
   shift
-  command -v "$name" >/dev/null 2>&1 && return 0
-  [ "$(basename "${SHELL:-}")" = "$name" ] && return 0
-  for f in "$@"; do
-    [ -e "$f" ] && return 0
+  command -v "$shell_name" >/dev/null 2>&1 && return 0
+  [ "$(basename "${SHELL:-}")" = "$shell_name" ] && return 0
+  for shell_f in "$@"; do
+    [ -e "$shell_f" ] && return 0
   done
   return 1
 }
@@ -240,7 +257,6 @@ uses_shell() {
 # path_targets prints "kind:file" per shell present. zsh, bash and fish are what
 # people actually log in with; anything else falls back to the printed export.
 path_targets() {
-  local zdot fishrc f wrote
   zdot="${ZDOTDIR:-$HOME}"
   fishrc="${XDG_CONFIG_HOME:-$HOME/.config}/fish/config.fish"
 
@@ -278,7 +294,6 @@ configure_path() {
     *":$BIN_DIR:"*) return 0 ;;
   esac
 
-  local literal targets target kind file dir
   literal="$(path_literal)"
   targets="$(path_targets)"
   [ -n "$targets" ] || return 0
@@ -295,24 +310,25 @@ configure_path() {
     fi
 
     dir="$(dirname "$file")"
-    mkdir -p "$dir" 2>/dev/null || { warn "cannot create ${dir/#$HOME/\~}"; continue; }
+    mkdir -p "$dir" 2>/dev/null || { warn "cannot create $(tilde "$dir")"; continue; }
 
     if path_snippet "$kind" "$literal" >> "$file" 2>/dev/null; then
-      ok "PATH set in ${file/#$HOME/\~}"
+      ok "PATH set in $(tilde "$file")"
       PATH_CHANGED=$((PATH_CHANGED + 1))
     else
-      warn "cannot write ${file/#$HOME/\~}"
+      warn "cannot write $(tilde "$file")"
     fi
-  done <<< "$targets"
+  done <<EOF
+$targets
+EOF
 }
 
 # --- report -----------------------------------------------------------------
 
 report() {
-  local version shadow
   version="$("$BIN_DIR/$BIN" --version 2>/dev/null | head -n1)" ||
     die "$BIN installed to $BIN_DIR/$BIN but does not run"
-  ok "${version:-$BIN} installed to ${BIN_DIR/#$HOME/\~}/$BIN"
+  ok "${version:-$BIN} installed to $(tilde "$BIN_DIR")/$BIN"
 
   configure_path
 
@@ -328,7 +344,7 @@ report() {
       elif [ "$PATH_ALREADY" -gt 0 ]; then
         info "Already in your shell config — open a new terminal, or run:"
       else
-        warn "${BIN_DIR/#$HOME/\~} is not on your PATH"
+        warn "$(tilde "$BIN_DIR") is not on your PATH"
       fi
       hint "export PATH=\"$BIN_DIR:\$PATH\""
       ;;

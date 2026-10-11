@@ -25,4 +25,4 @@ jobs:
         run: go build ./...
 
       - name: Lint the bootstrap installer
-        run: bash -n install.sh
+        run: sh -n install.sh

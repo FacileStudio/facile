@@ -4,7 +4,7 @@ One installer for the whole Facile Studio suite. Pick your tools, keep them
 current, and sign in once.
 
 ```sh
-curl -fsSL https://get.facile.studio | bash
+curl -fsSL https://get.facile.studio | sh
 ```
 
 Installs to `~/.local/bin` and puts it on your `PATH` — zsh, bash and fish,
