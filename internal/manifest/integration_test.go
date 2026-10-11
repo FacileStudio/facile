@@ -51,6 +51,7 @@ lists:
 	t.Run("SourcesPath returns priority path", func(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
+		t.Setenv("XDG_CONFIG_HOME", "")
 
 		homeFile := filepath.Join(home, ".facile.yml")
 		xdgFile := filepath.Join(home, ".config", "facile", "sources.yml")
@@ -99,6 +100,7 @@ lists:
 	t.Run("LoadSources parses config.yml with sources key", func(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
+		t.Setenv("XDG_CONFIG_HOME", "")
 
 		cfgDir := filepath.Join(home, ".config", "facile")
 		if err := os.MkdirAll(cfgDir, 0o755); err != nil {
@@ -240,6 +242,7 @@ func TestIntegrationCatalogMergingWithSingleSources(t *testing.T) {
 	t.Run("Load preserves parse error in LoadErrors", func(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
+		t.Setenv("XDG_CONFIG_HOME", "")
 
 		cfgDir := filepath.Join(home, ".config", "facile")
 		if err := os.MkdirAll(cfgDir, 0o755); err != nil {
