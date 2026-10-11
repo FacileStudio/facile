@@ -151,7 +151,7 @@ tool never means reinstalling facile.
 
 The catalog is not closed. Create `~/.facile.yml` (or
 `~/.config/facile/config.yml`, checked second, or
-`~/.config/facile/sources.yml`) and every tool you name there
+`~/.config/facile/sources.yml`, including `.yaml` equivalents) and every tool you name there
 joins the catalog on the next command. The first file that exists is the only
 one read; if none exists, you get the suite catalog alone.
 

@@ -16,6 +16,7 @@ record what shipped rather than what was written down at the time.
 
 ### Added
 
+- Support for `.yaml` extensions (`~/.facile.yaml`, `config.yaml`, and `sources.yaml`) alongside `.yml`.
 - Support for `~/.config/facile/config.yml` (honoring `$XDG_CONFIG_HOME`) as the standard XDG configuration path between `~/.facile.yml` and `sources.yml`.
 - Simplified root-level YAML syntax for tools: map tool names directly to repos (`name: owner/repo[@branch]`), bare repo lists, and clean list URLs.
 

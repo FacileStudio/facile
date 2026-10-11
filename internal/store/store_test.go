@@ -3,6 +3,7 @@ package store
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -12,14 +13,16 @@ func TestSourcesPaths_OrderAndFallback(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "")
 
 	paths := SourcesPaths()
-	if len(paths) != 3 {
-		t.Fatalf("expected 3 paths, got %d", len(paths))
+	want := []string{
+		filepath.Join(home, ".facile.yml"),
+		filepath.Join(home, ".facile.yaml"),
+		filepath.Join(home, ".config", "facile", "config.yml"),
+		filepath.Join(home, ".config", "facile", "config.yaml"),
+		filepath.Join(home, ".config", "facile", "sources.yml"),
+		filepath.Join(home, ".config", "facile", "sources.yaml"),
 	}
-	wantFirst := filepath.Join(home, ".facile.yml")
-	wantSecond := filepath.Join(home, ".config", "facile", "config.yml")
-	wantThird := filepath.Join(home, ".config", "facile", "sources.yml")
-	if paths[0] != wantFirst || paths[1] != wantSecond || paths[2] != wantThird {
-		t.Errorf("unexpected paths: got %v", paths)
+	if !slices.Equal(paths, want) {
+		t.Errorf("unexpected paths:\ngot:  %v\nwant: %v", paths, want)
 	}
 }
 
@@ -30,9 +33,10 @@ func TestSourcesPaths_RespectsXDG(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", xdg)
 
 	paths := SourcesPaths()
-	wantSecond := filepath.Join(xdg, "facile", "config.yml")
-	if paths[1] != wantSecond {
-		t.Errorf("expected XDG path %q, got %q", wantSecond, paths[1])
+	wantYml := filepath.Join(xdg, "facile", "config.yml")
+	wantYaml := filepath.Join(xdg, "facile", "config.yaml")
+	if paths[2] != wantYml || paths[3] != wantYaml {
+		t.Errorf("expected XDG paths %q and %q, got %q and %q", wantYml, wantYaml, paths[2], paths[3])
 	}
 }
 
@@ -56,5 +60,24 @@ func TestSourcesPath_PrefersConfigYmlWhenNoDotfile(t *testing.T) {
 	found := SourcesPath()
 	if found != cfgPath {
 		t.Errorf("SourcesPath() = %q, want %q", found, cfgPath)
+	}
+}
+
+func TestSourcesPath_FindsYamlVariant(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	cfgYaml := filepath.Join(home, ".config", "facile", "config.yaml")
+	if err := os.MkdirAll(filepath.Dir(cfgYaml), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfgYaml, []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	found := SourcesPath()
+	if found != cfgYaml {
+		t.Errorf("SourcesPath() = %q, want %q", found, cfgYaml)
 	}
 }

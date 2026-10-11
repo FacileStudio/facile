@@ -94,8 +94,8 @@ type Auth struct {
 }
 
 // SourceConfig holds the user-defined sources configuration. It is read from
-// ~/.facile.yml, ~/.config/facile/config.yml or ~/.config/facile/sources.yml
-// (first found wins).
+// ~/.facile.yml, ~/.config/facile/config.yml, or ~/.config/facile/sources.yml
+// (including .yaml extensions, first found wins).
 type SourceConfig struct {
 	Single []SingleSource `yaml:"single"`
 	Lists  []ListSource   `yaml:"lists"`

@@ -36,8 +36,9 @@ func CacheDir() string {
 func CatalogPath() string { return filepath.Join(CacheDir(), "tools.yml") }
 
 // SourcesPaths returns the ordered list of sources file paths in priority
-// order (first wins): ~/.facile.yml, ~/.config/facile/config.yml,
-// ~/.config/facile/sources.yml.
+// order (first wins): ~/.facile.yml, ~/.facile.yaml,
+// ~/.config/facile/config.yml, ~/.config/facile/config.yaml,
+// ~/.config/facile/sources.yml, ~/.config/facile/sources.yaml.
 func SourcesPaths() []string {
 	home := userHome()
 	if home == "" {
@@ -46,8 +47,11 @@ func SourcesPaths() []string {
 	cfgDir := ConfigDir()
 	return []string{
 		filepath.Join(home, ".facile.yml"),
+		filepath.Join(home, ".facile.yaml"),
 		filepath.Join(cfgDir, "config.yml"),
+		filepath.Join(cfgDir, "config.yaml"),
 		filepath.Join(cfgDir, "sources.yml"),
+		filepath.Join(cfgDir, "sources.yaml"),
 	}
 }
 
