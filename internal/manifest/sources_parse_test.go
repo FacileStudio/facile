@@ -120,3 +120,74 @@ lists:
 		t.Fatalf("unexpected lists: %+v", cfg.Lists)
 	}
 }
+
+func TestParseSources_SourcesSectionMap(t *testing.T) {
+	yaml := `sources:
+  palette: saravenpi/palette
+  pres: saravenpi/pres
+`
+	cfg, err := ParseSources([]byte(yaml))
+	if err != nil {
+		t.Fatalf("ParseSources failed: %v", err)
+	}
+	if len(cfg.Single) != 2 {
+		t.Fatalf("expected 2 tools, got %d", len(cfg.Single))
+	}
+	if cfg.Single[0].Name != "palette" || cfg.Single[1].Name != "pres" {
+		t.Errorf("unexpected tools: %+v", cfg.Single)
+	}
+}
+
+func TestParseSources_SourcesSectionSlice(t *testing.T) {
+	yaml := `sources:
+  - saravenpi/palette
+  - saravenpi/pres
+`
+	cfg, err := ParseSources([]byte(yaml))
+	if err != nil {
+		t.Fatalf("ParseSources failed: %v", err)
+	}
+	if len(cfg.Single) != 2 {
+		t.Fatalf("expected 2 tools, got %d", len(cfg.Single))
+	}
+	if cfg.Single[0].Name != "palette" || cfg.Single[1].Name != "pres" {
+		t.Errorf("unexpected tools: %+v", cfg.Single)
+	}
+}
+
+func TestParseSources_SourcesSectionStructured(t *testing.T) {
+	yaml := `sources:
+  tools:
+    palette: saravenpi/palette
+  lists:
+    - https://example.com/repos.txt
+`
+	cfg, err := ParseSources([]byte(yaml))
+	if err != nil {
+		t.Fatalf("ParseSources failed: %v", err)
+	}
+	if len(cfg.Single) != 1 || cfg.Single[0].Name != "palette" {
+		t.Errorf("unexpected tools: %+v", cfg.Single)
+	}
+	if len(cfg.Lists) != 1 || cfg.Lists[0].Name != "repos" {
+		t.Errorf("unexpected lists: %+v", cfg.Lists)
+	}
+}
+
+func TestParseSources_CaseInsensitiveKeys(t *testing.T) {
+	yaml := `Tools:
+  palette: saravenpi/palette
+Lists:
+  - https://example.com/repos.txt
+`
+	cfg, err := ParseSources([]byte(yaml))
+	if err != nil {
+		t.Fatalf("ParseSources failed: %v", err)
+	}
+	if len(cfg.Single) != 1 || cfg.Single[0].Name != "palette" {
+		t.Errorf("unexpected tools: %+v", cfg.Single)
+	}
+	if len(cfg.Lists) != 1 || cfg.Lists[0].Name != "repos" {
+		t.Errorf("unexpected lists: %+v", cfg.Lists)
+	}
+}

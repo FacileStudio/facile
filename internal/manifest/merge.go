@@ -55,7 +55,9 @@ func Merge(base *Manifest, layers ...*Manifest) *Manifest {
 func mergeCatalogs(base *Manifest) *Manifest {
 	cfg, err := LoadSources()
 	if err != nil {
-		return base
+		out := *base
+		out.LoadErrors = append(out.LoadErrors, err.Error())
+		return &out
 	}
 
 	loadErrors, layers := collectLayers(cfg, base.Version)
@@ -127,7 +129,7 @@ func resolveSingleSource(ctx context.Context, s SingleSource) (Tool, error) {
 }
 
 func discoverSingle(ctx context.Context, s SingleSource) (*Tool, error) {
-	tool, err := discoverTool(ctx, s.Repo)
+	tool, err := discoverTool(ctx, s.Repo, s.Branch)
 	if err != nil {
 		return nil, fmt.Errorf("discovering %s: %w", s.Repo, err)
 	}
@@ -159,5 +161,11 @@ func applySingleOverrides(t *Tool, s SingleSource) {
 	}
 	if s.Summary != "" {
 		t.Summary = s.Summary
+	}
+	if s.Cmd != "" {
+		t.VersionDetection.Cmd = s.Cmd
+	}
+	if s.Pattern != "" {
+		t.VersionDetection.Pattern = s.Pattern
 	}
 }

@@ -20,6 +20,10 @@ record what shipped rather than what was written down at the time.
 - Support for `~/.config/facile/config.yml` (honoring `$XDG_CONFIG_HOME`) as the standard XDG configuration path between `~/.facile.yml` and `sources.yml`.
 - Simplified root-level YAML syntax for tools: map tool names directly to repos (`name: owner/repo[@branch]`), bare repo lists, and clean list URLs.
 
+### Fixed
+
+- Configuration parsing for `config.yml` now supports wrapping under `sources:` (as a map, list, or structured section), handles case-insensitive root keys, surfaces `LoadSources` errors in catalog `LoadErrors`, and probes custom ref branches during discovery.
+
 ## [0.16.0] — 2026-10-10
 
 ### Changed

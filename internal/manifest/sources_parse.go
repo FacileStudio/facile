@@ -9,13 +9,47 @@ import (
 )
 
 func parseRootItem(cfg *SourceConfig, key string, val any) error {
-	switch key {
+	switch strings.ToLower(key) {
 	case "single", "tools":
 		tools, err := parseToolsSection(val)
 		if err != nil {
 			return fmt.Errorf("parsing %s: %w", key, err)
 		}
 		cfg.Single = append(cfg.Single, tools...)
+	case "sources":
+		if doc, ok := val.(yaml.MapSlice); ok {
+			hasSections := false
+			for _, item := range doc {
+				k := strings.ToLower(fmt.Sprint(item.Key))
+				if k == "tools" || k == "single" || k == "lists" || k == "sources" {
+					hasSections = true
+					break
+				}
+			}
+			if hasSections {
+				for _, item := range doc {
+					if err := parseRootItem(cfg, fmt.Sprint(item.Key), item.Value); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+			tools, err := parseToolsMap(doc)
+			if err != nil {
+				return fmt.Errorf("parsing sources: %w", err)
+			}
+			cfg.Single = append(cfg.Single, tools...)
+			return nil
+		}
+		if slice, ok := val.([]any); ok {
+			tools, err := parseToolsSlice(slice)
+			if err != nil {
+				return fmt.Errorf("parsing sources: %w", err)
+			}
+			cfg.Single = append(cfg.Single, tools...)
+			return nil
+		}
+		return fmt.Errorf("sources must be a map or a list")
 	case "lists":
 		lists, err := parseListSlice(val)
 		if err != nil {

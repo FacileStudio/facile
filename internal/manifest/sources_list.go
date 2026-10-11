@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -158,12 +159,12 @@ func discoverFromList(ctx context.Context, ls ListSource) ([]Tool, []error) {
 	return tools, errs
 }
 
-func discoverTool(ctx context.Context, repo string) (*Tool, error) {
-	tool, err := probeRepoFile(ctx, repo, "facile.toml")
+func discoverTool(ctx context.Context, repo string, branches ...string) (*Tool, error) {
+	tool, err := probeRepoFile(ctx, repo, "facile.toml", branches...)
 	if tool != nil {
 		return tool, nil
 	}
-	tool2, err2 := probeRepoFile(ctx, repo, "mise.toml")
+	tool2, err2 := probeRepoFile(ctx, repo, "mise.toml", branches...)
 	if tool2 != nil {
 		return tool2, nil
 	}
@@ -173,9 +174,20 @@ func discoverTool(ctx context.Context, repo string) (*Tool, error) {
 	return nil, err
 }
 
-func probeRepoFile(ctx context.Context, repo, file string) (*Tool, error) {
+func probeRepoFile(ctx context.Context, repo, file string, branches ...string) (*Tool, error) {
+	var candidateBranches []string
+	for _, b := range branches {
+		if b != "" && !slices.Contains(candidateBranches, b) {
+			candidateBranches = append(candidateBranches, b)
+		}
+	}
+	for _, b := range []string{"main", "master"} {
+		if !slices.Contains(candidateBranches, b) {
+			candidateBranches = append(candidateBranches, b)
+		}
+	}
 	var lastNon404 error
-	for _, branch := range []string{"main", "master"} {
+	for _, branch := range candidateBranches {
 		tool, err := probeBranch(ctx, repo, file, branch)
 		if err != nil {
 			if !isNotFound(err) {

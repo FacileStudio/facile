@@ -95,6 +95,34 @@ lists:
 			t.Errorf("expected empty config, got singles=%d lists=%d", len(cfg.Single), len(cfg.Lists))
 		}
 	})
+
+	t.Run("LoadSources parses config.yml with sources key", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+
+		cfgDir := filepath.Join(home, ".config", "facile")
+		if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		content := `sources:
+  palette: saravenpi/palette
+  pres: saravenpi/pres
+`
+		if err := os.WriteFile(filepath.Join(cfgDir, "config.yml"), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := LoadSources()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(cfg.Single) != 2 {
+			t.Fatalf("expected 2 tools, got %d", len(cfg.Single))
+		}
+		if cfg.Single[0].Name != "palette" || cfg.Single[1].Name != "pres" {
+			t.Errorf("unexpected tools: %+v", cfg.Single)
+		}
+	})
 }
 
 func TestIntegrationCatalogMergingWithSingleSources(t *testing.T) {
@@ -206,6 +234,28 @@ func TestIntegrationCatalogMergingWithSingleSources(t *testing.T) {
 		_, ok = m.Get("opus")
 		if !ok {
 			t.Error("Load should preserve base tools")
+		}
+	})
+
+	t.Run("Load preserves parse error in LoadErrors", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+
+		cfgDir := filepath.Join(home, ".config", "facile")
+		if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(cfgDir, "config.yml"), []byte("invalid: yaml: ["), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		cachePath := filepath.Join(t.TempDir(), "cache.yml")
+		m, err := Load(cachePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(m.LoadErrors) == 0 {
+			t.Error("expected LoadErrors to contain parse error")
 		}
 	})
 }
