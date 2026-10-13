@@ -49,12 +49,12 @@ func LatestTag(repo string) (string, error) {
 	return tag, nil
 }
 
-func fromRelease(tool manifest.Tool, version, work string) (string, error) {
+func fromRelease(tool manifest.Tool, version, work string) ([]string, error) {
 	tag := version
 	if tag == "" {
 		resolved, err := LatestTag(tool.Repo)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		tag = resolved
 	}
@@ -65,16 +65,24 @@ func fromRelease(tool manifest.Tool, version, work string) (string, error) {
 	ui.Step("Downloading %s %s for %s/%s", tool.Bin, ver, runtime.GOOS, runtime.GOARCH)
 	blob, err := get(base + "/" + archive)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	sums, err := get(base + "/checksums.txt")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if err := verifyChecksum(blob, archive, string(sums)); err != nil {
-		return "", err
+		return nil, err
 	}
-	return extract(blob, tool.Bin, work)
+	paths := make([]string, 0, len(tool.BinList()))
+	for _, bin := range tool.BinList() {
+		path, err := extract(blob, bin, work)
+		if err != nil {
+			return nil, err
+		}
+		paths = append(paths, path)
+	}
+	return paths, nil
 }
 
 // verifyChecksum aborts on a mismatch. It never falls back to a source build:

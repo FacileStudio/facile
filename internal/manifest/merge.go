@@ -116,7 +116,7 @@ func processSingleSources(ctx context.Context, singles []SingleSource) ([]Tool, 
 }
 
 func resolveSingleSource(ctx context.Context, s SingleSource) (Tool, error) {
-	if s.Repo != "" && (s.Name == "" || (s.Build == "" && s.Bin == "")) {
+	if s.Repo != "" && (s.Name == "" || (s.Build == "" && s.Bin == "" && len(s.Bins) == 0)) {
 		discovered, err := discoverSingle(ctx, s)
 		if err != nil {
 			return Tool{}, err
@@ -150,9 +150,7 @@ func applySingleOverrides(t *Tool, s SingleSource) {
 	if s.Branch != "" {
 		t.Branch = s.Branch
 	}
-	if s.Bin != "" {
-		t.Bin = s.Bin
-	}
+	applyBinOverrides(t, s)
 	if s.Build != "" {
 		t.Build = s.Build
 	}
@@ -167,5 +165,21 @@ func applySingleOverrides(t *Tool, s SingleSource) {
 	}
 	if s.Pattern != "" {
 		t.VersionDetection.Pattern = s.Pattern
+	}
+}
+
+// applyBinOverrides keeps Bin and Bins consistent: an explicit bin replaces
+// the primary (and the whole list when there is only one), an explicit bins
+// list wins outright with its first entry as primary.
+func applyBinOverrides(t *Tool, s SingleSource) {
+	if s.Bin != "" {
+		t.Bin = s.Bin
+		if len(t.Bins) <= 1 {
+			t.Bins = []string{s.Bin}
+		}
+	}
+	if len(s.Bins) > 0 {
+		t.Bins = s.Bins
+		t.Bin = s.Bins[0]
 	}
 }

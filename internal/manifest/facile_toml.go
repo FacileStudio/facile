@@ -68,7 +68,7 @@ func (ft *FacileToml) ToTool() (Tool, error) {
 	}
 	return rawTool{
 		name: ft.Name, summary: ft.Summary, repo: ft.Repo, branch: ft.Branch,
-		build: ft.Build, bin: ft.Bin, srcSubdir: ft.SrcSubdir, asset: ft.Asset,
+		build: ft.Build, bin: ft.Bin, bins: ft.Bins, srcSubdir: ft.SrcSubdir, asset: ft.Asset,
 		skill: ft.Skill, goVersionVar: ft.GoVersionVar, requires: ft.Requires,
 		versionCmd: ft.VersionCmd, versionPattern: ft.VersionPattern,
 	}.toTool(), nil

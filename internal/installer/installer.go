@@ -26,9 +26,9 @@ type Options struct {
 	MCPTools  []string
 }
 
-// Install places one tool's binary in BinDir, preferring a published release
-// and falling back to a source build. It returns the version the installed
-// binary actually reports — never the version we hoped to install.
+// Install places every binary of a tool in BinDir, preferring a published
+// release and falling back to a source build. It returns the version the
+// installed primary binary actually reports — never the version we hoped to.
 func Install(tool manifest.Tool, opts Options) (string, error) {
 	if err := prepareBinDir(opts.BinDir); err != nil {
 		return "", err
@@ -45,21 +45,47 @@ func Install(tool manifest.Tool, opts Options) (string, error) {
 		}
 	}
 
-	dest := filepath.Join(opts.BinDir, tool.Bin)
-	src, err := build(tool, opts, work)
+	srcs, err := build(tool, opts, work)
 	if err != nil {
 		return "", err
 	}
-	if err := atomicInstall(src, dest); err != nil {
+	reported, err := placeAll(opts.BinDir, tool, srcs)
+	if err != nil {
 		return "", err
 	}
 	if opts.WithSkill {
 		registerSkill(tool, work)
 	}
 	if opts.WithMCP && slices.Contains(opts.MCPTools, tool.Name) {
-		registerMCP(dest)
+		registerMCP(filepath.Join(opts.BinDir, tool.BinList()[0]))
 	}
-	return Verify(dest)
+	return reported, nil
+}
+
+// placeAll stages each built binary into BinDir in BinList order and verifies
+// each one runs, returning the primary binary's version line. A count mismatch
+// means a backend lied about what it produced, so it aborts rather than
+// installing an arbitrary subset.
+func placeAll(binDir string, tool manifest.Tool, srcs []string) (string, error) {
+	bins := tool.BinList()
+	if len(srcs) != len(bins) {
+		return "", fmt.Errorf("built %d binaries but %s declares %d", len(srcs), tool.Name, len(bins))
+	}
+	reported := ""
+	for i, src := range srcs {
+		dest := filepath.Join(binDir, bins[i])
+		if err := atomicInstall(src, dest); err != nil {
+			return "", err
+		}
+		line, err := Verify(dest)
+		if err != nil {
+			return "", err
+		}
+		if i == 0 {
+			reported = line
+		}
+	}
+	return reported, nil
 }
 
 // fromReleaseFn is a seam for the tests. TestVerifyChecksumRejectsATamperedArchive
@@ -71,14 +97,14 @@ var fromReleaseFn = fromRelease
 // build prefers a published release and falls back to a source build, except
 // after an integrity failure. A named cause beats a fixed sentence: a private
 // repo, a missing platform and a dead network all used to print the same line.
-func build(tool manifest.Tool, opts Options, work string) (string, error) {
+func build(tool manifest.Tool, opts Options, work string) ([]string, error) {
 	if tool.Asset != "" && !opts.FromSrc {
-		path, err := fromReleaseFn(tool, opts.Version, work)
+		paths, err := fromReleaseFn(tool, opts.Version, work)
 		if err == nil {
-			return path, nil
+			return paths, nil
 		}
 		if _, ok := errors.AsType[integrityError](err); ok {
-			return "", err
+			return nil, err
 		}
 		ui.Warn("falling back to a source build: %s", err)
 	}
@@ -99,15 +125,10 @@ func Verify(path string) (string, error) {
 	return line, nil
 }
 
-func exists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
 // Installed reports the version line of an already-installed tool.
 func Installed(binDir, bin string) (string, bool) {
 	path := filepath.Join(binDir, bin)
-	if !exists(path) {
+	if _, err := os.Stat(path); err != nil {
 		return "", false
 	}
 	line, err := Verify(path)
@@ -117,16 +138,21 @@ func Installed(binDir, bin string) (string, bool) {
 	return line, true
 }
 
-// Uninstall removes a tool's binary. A tool that is not installed is not an error.
-func Uninstall(binDir, bin string) (bool, error) {
-	path := filepath.Join(binDir, bin)
-	if !exists(path) {
-		return false, nil
+// Uninstall removes every binary of a tool. A tool that is not installed is
+// not an error: nothing to remove counts as gone.
+func Uninstall(binDir string, tool manifest.Tool) (bool, error) {
+	removed := false
+	for _, bin := range tool.BinList() {
+		path := filepath.Join(binDir, bin)
+		if _, err := os.Stat(path); err != nil {
+			continue
+		}
+		if err := os.Remove(path); err != nil {
+			return removed, fmt.Errorf("cannot remove %s: %w", path, err)
+		}
+		removed = true
 	}
-	if err := os.Remove(path); err != nil {
-		return false, fmt.Errorf("cannot remove %s: %w", path, err)
-	}
-	return true, nil
+	return removed, nil
 }
 
 // atomicInstall stages the new binary beside its destination and renames it into

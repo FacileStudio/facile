@@ -20,7 +20,7 @@ var toolchains = map[string]string{
 // fromSource builds the tool from a checkout. It clones the requested version
 // when one was named, so a --version whose archive cannot be downloaded still
 // installs that version rather than whatever main happens to be.
-func fromSource(tool manifest.Tool, version, work string) (string, error) {
+func fromSource(tool manifest.Tool, version, work string) ([]string, error) {
 	if version == "" {
 		if tag, err := LatestTag(tool.Repo); err == nil {
 			version = tag
@@ -28,28 +28,28 @@ func fromSource(tool manifest.Tool, version, work string) (string, error) {
 	}
 	hint, known := toolchains[tool.Build]
 	if !known {
-		return "", fmt.Errorf("unknown build backend: %s", tool.Build)
+		return nil, fmt.Errorf("unknown build backend: %s", tool.Build)
 	}
 	name, advice, _ := strings.Cut(hint, ", ")
 	if err := need("git", "install git first"); err != nil {
-		return "", err
+		return nil, err
 	}
 	if err := need(name, advice); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	checkout, err := checkoutSource(tool, version, work)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	ui.Step("Building from source, this takes a minute")
 	out := filepath.Join(work, "out")
 	if err := os.MkdirAll(out, 0o755); err != nil {
-		return "", err
+		return nil, err
 	}
 	src := filepath.Join(checkout, tool.SrcSubdir)
-	return buildFor(tool, src, checkout, work, out)
+	return buildFor(tool, src, checkout, out)
 }
 
 // checkoutSource clones the tool at the requested ref and returns where the

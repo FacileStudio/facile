@@ -17,6 +17,7 @@ type Tool struct {
 	Repo         string   `yaml:"repo"`
 	Branch       string   `yaml:"branch"`
 	Bin          string   `yaml:"bin"`
+	Bins         []string `yaml:"bins"`
 	Build        string   `yaml:"build"`
 	SrcSubdir    string   `yaml:"srcSubdir"`
 	Asset        string   `yaml:"asset"`
@@ -26,6 +27,16 @@ type Tool struct {
 	Auth         *Auth    `yaml:"auth"`
 
 	VersionDetection `yaml:",inline"`
+}
+
+// BinList returns every binary the tool installs, in install order. Bin is
+// the primary one (the binary that answers --version); a tool built from a
+// workspace declares the rest in Bins.
+func (t Tool) BinList() []string {
+	if len(t.Bins) > 0 {
+		return t.Bins
+	}
+	return []string{t.Bin}
 }
 
 // Manifest is the whole catalog. MCP names the tools that register their MCP
@@ -108,6 +119,7 @@ type SingleSource struct {
 	Repo         string   `yaml:"repo"`
 	Branch       string   `yaml:"branch"`
 	Bin          string   `yaml:"bin"`
+	Bins         []string `yaml:"bins"`
 	Build        string   `yaml:"build"`
 	SrcSubdir    string   `yaml:"srcSubdir"`
 	Asset        string   `yaml:"asset"`
@@ -120,6 +132,7 @@ type SingleSource struct {
 
 type rawTool struct {
 	name, summary, repo, branch, build, bin, srcSubdir, asset, skill, goVersionVar string
+	bins                                                                           []string
 	requires                                                                       []string
 	versionCmd, versionPattern                                                     string
 }
@@ -137,13 +150,19 @@ func (r rawTool) toTool() Tool {
 	if bin == "" {
 		bin = r.name
 	}
+	bins := r.bins
+	if len(bins) == 0 {
+		bins = []string{bin}
+	} else {
+		bin = bins[0]
+	}
 	srcSubdir := r.srcSubdir
 	if srcSubdir == "" {
 		srcSubdir = "."
 	}
 	return Tool{
 		Name: r.name, Summary: r.summary, Repo: r.repo,
-		Branch: branch, Bin: bin, Build: build, SrcSubdir: srcSubdir,
+		Branch: branch, Bin: bin, Bins: bins, Build: build, SrcSubdir: srcSubdir,
 		Asset: r.asset, Skill: r.skill, GoVersionVar: r.goVersionVar,
 		Requires:         r.requires,
 		VersionDetection: VersionDetection{Cmd: r.versionCmd, Pattern: r.versionPattern},
@@ -163,7 +182,7 @@ func (s *SingleSource) ToTool() (Tool, error) {
 	}
 	return rawTool{
 		name: s.Name, summary: s.Summary, repo: s.Repo, branch: s.Branch,
-		build: s.Build, bin: s.Bin, srcSubdir: s.SrcSubdir, asset: s.Asset,
+		build: s.Build, bin: s.Bin, bins: s.Bins, srcSubdir: s.SrcSubdir, asset: s.Asset,
 		skill: s.Skill, goVersionVar: s.GoVersionVar, requires: s.Requires,
 		versionCmd: s.Cmd, versionPattern: s.Pattern,
 	}.toTool(), nil
@@ -185,6 +204,7 @@ type FacileToml struct {
 	Repo           string   `toml:"repo"`
 	Branch         string   `toml:"branch"`
 	Bin            string   `toml:"bin"`
+	Bins           []string `toml:"bins"`
 	Build          string   `toml:"build"`
 	SrcSubdir      string   `toml:"srcSubdir"`
 	Asset          string   `toml:"asset"`

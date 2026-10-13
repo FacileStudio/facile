@@ -41,8 +41,8 @@ func TestVerifyChecksumRejectsATamperedArchive(t *testing.T) {
 // not in verifyChecksum. Detection was always correct; the decision above it threw
 // the result away, and the test above passed throughout.
 func TestBuildRefusesASourceFallbackAfterAnIntegrityFailure(t *testing.T) {
-	stubRelease(t, func(manifest.Tool, string, string) (string, error) {
-		return "", integrityError{"checksum mismatch for tool_1.0.0_darwin_arm64.tar.gz — re-cut the release"}
+	stubRelease(t, func(manifest.Tool, string, string) ([]string, error) {
+		return nil, integrityError{"checksum mismatch for tool_1.0.0_darwin_arm64.tar.gz — re-cut the release"}
 	})
 
 	_, err := build(fakeTool(), Options{}, t.TempDir())
@@ -53,8 +53,8 @@ func TestBuildRefusesASourceFallbackAfterAnIntegrityFailure(t *testing.T) {
 }
 
 func TestBuildStillFallsBackWhenAReleaseIsMerelyUnreachable(t *testing.T) {
-	stubRelease(t, func(manifest.Tool, string, string) (string, error) {
-		return "", fmt.Errorf("tool_1.0.0_darwin_arm64.tar.gz returned 404 Not Found")
+	stubRelease(t, func(manifest.Tool, string, string) ([]string, error) {
+		return nil, fmt.Errorf("tool_1.0.0_darwin_arm64.tar.gz returned 404 Not Found")
 	})
 
 	_, err := build(fakeTool(), Options{}, t.TempDir())
@@ -64,7 +64,7 @@ func TestBuildStillFallsBackWhenAReleaseIsMerelyUnreachable(t *testing.T) {
 	}
 }
 
-func stubRelease(t *testing.T, fn func(manifest.Tool, string, string) (string, error)) {
+func stubRelease(t *testing.T, fn func(manifest.Tool, string, string) ([]string, error)) {
 	t.Helper()
 	original := fromReleaseFn
 	t.Cleanup(func() { fromReleaseFn = original })

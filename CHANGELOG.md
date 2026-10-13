@@ -10,6 +10,16 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+### Added
+
+- Multi-binary tools: a manifest can declare `bins = [...]` (or `bins:` in
+  config.yml), so one repo installs all of its binaries in one pass. `bin`
+  stays the primary — the one that answers `--version`. The rust backend now
+  builds with `cargo build --release` from the declared source directory,
+  which makes a Cargo workspace like `saravenpi/widgets` installable as a
+  single catalog entry; the go backend still builds one binary and says so
+  when given more. `facile uninstall` removes every binary of such a tool.
+
 ## [0.16.1] — 2026-10-11
 
 ### Changed

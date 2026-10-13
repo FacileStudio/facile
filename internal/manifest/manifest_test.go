@@ -127,3 +127,43 @@ func TestSonarTheFirstMCPToolDeclaresTheInstallHook(t *testing.T) {
 		t.Errorf("sonar must be named under mcp: so the installer runs its install subcommand (got %v)", m.MCP)
 	}
 }
+
+// A workspace repo ships several binaries under one name: the manifest lists
+// them all, the first is primary, and install order follows the list.
+func TestOneManifestDeclaresEveryBinaryOfARepo(t *testing.T) {
+	raw := "name = \"widgets\"\nrepo = \"saravenpi/widgets\"\nbuild = \"rust\"\n" +
+		"bins = [\"statusbar\", \"sidebar\", \"launcher\"]\n"
+
+	ft, err := parseFacileToml([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tool, err := ft.ToTool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"statusbar", "sidebar", "launcher"}
+	if !slices.Equal(tool.BinList(), want) {
+		t.Fatalf("BinList = %v, want %v", tool.BinList(), want)
+	}
+	if tool.Bin != "statusbar" {
+		t.Fatalf("primary bin = %q, want statusbar", tool.Bin)
+	}
+}
+
+// Existing single-binary manifests must keep installing exactly one binary.
+func TestASingleBinStillProducesOneEntry(t *testing.T) {
+	raw := "name = \"palette\"\nrepo = \"saravenpi/palette\"\nbin = \"palette\"\n"
+
+	ft, err := parseFacileToml([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tool, err := ft.ToTool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(tool.BinList(), []string{"palette"}) {
+		t.Fatalf("BinList = %v, want [palette]", tool.BinList())
+	}
+}

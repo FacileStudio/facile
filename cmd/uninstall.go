@@ -31,7 +31,7 @@ func runUninstall(c *cobra.Command, args []string) error {
 	dir := binDir(c)
 	removed := 0
 	for _, tool := range tools {
-		gone, err := installer.Uninstall(dir, tool.Bin)
+		gone, err := installer.Uninstall(dir, tool)
 		if err != nil {
 			return err
 		}
