@@ -10,6 +10,8 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-10-13
+
 ### Added
 
 - Multi-binary tools: a manifest can declare `bins = [...]` (or `bins:` in
