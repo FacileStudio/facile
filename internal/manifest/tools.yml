@@ -434,7 +434,7 @@ tools:
         tokenField: token
       store:
         kind: file
-        path: ~/.mycelium.yml
+        path: ~/.config/mycelium/config.yml
         format: yaml
         tokenField: token
         urlField: url

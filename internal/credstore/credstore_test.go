@@ -164,7 +164,7 @@ func TestWriteTightensAnAlreadyLooseFile(t *testing.T) {
 }
 
 func TestWriteStoresExtraFields(t *testing.T) {
-	path := filepath.Join(t.TempDir(), ".mycelium.yml")
+	path := filepath.Join(t.TempDir(), "config.yml")
 	s := &manifest.Store{
 		Kind: "file", Path: path, Format: "yaml",
 		TokenField: "token", URLField: "url", Mode: 0o600, Preserve: true,
@@ -182,7 +182,7 @@ func TestWriteStoresExtraFields(t *testing.T) {
 }
 
 func TestClearKeepsTheServerURL(t *testing.T) {
-	path := filepath.Join(t.TempDir(), ".mycelium.yml")
+	path := filepath.Join(t.TempDir(), "config.yml")
 	if err := os.WriteFile(path, []byte("url: http://j\ntoken: SECRET\nspace: abc\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}

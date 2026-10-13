@@ -34,8 +34,28 @@ func registerSkill(tool manifest.Tool, work string) {
 // we deliberately do not create: writing an agent directory on a machine that
 // never set the bridge up would be noise. The dir's presence is the signal.
 func haveMyceliumSkills() bool {
-	info, err := os.Stat(filepath.Join(home(), ".mycelium", "skills"))
-	return err == nil && info.IsDir()
+	return myceliumSkillsDir() != ""
+}
+
+// myceliumSkillsDir is where mycelium keeps the skills the pi extension
+// exposes: the XDG data directory on a migrated machine, the legacy home
+// dotfile on one whose mycelium has not migrated yet, and empty when neither
+// holds a skills directory. The legacy fallback matters because a new facile
+// can run before the user's mycelium has moved the tree.
+func myceliumSkillsDir() string {
+	base := os.Getenv("XDG_DATA_HOME")
+	if base == "" {
+		base = filepath.Join(home(), ".local", "share")
+	}
+	migrated := filepath.Join(base, "mycelium", "skills")
+	if info, err := os.Stat(migrated); err == nil && info.IsDir() {
+		return migrated
+	}
+	legacy := filepath.Join(home(), ".mycelium", "skills")
+	if info, err := os.Stat(legacy); err == nil && info.IsDir() {
+		return legacy
+	}
+	return ""
 }
 
 func skillBody(tool manifest.Tool, work string) ([]byte, error) {

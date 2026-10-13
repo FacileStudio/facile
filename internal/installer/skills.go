@@ -34,10 +34,10 @@ func writeCodexSkill(skill string, body []byte) {
 // writeMyceliumSkill writes the skill into the mycelium skills directory that
 // the pi extension exposes.
 func writeMyceliumSkill(skill string, body []byte) {
-	if !haveMyceliumSkills() {
+	dir := myceliumSkillsDir()
+	if dir == "" {
 		return
 	}
-	dir := filepath.Join(home(), ".mycelium", "skills")
 	if os.WriteFile(filepath.Join(dir, skill+".md"), body, 0o644) == nil {
 		ui.Success("pi skill installed")
 	}
