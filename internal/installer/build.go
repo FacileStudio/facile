@@ -92,13 +92,30 @@ func describe(checkout string) string {
 	return strings.TrimPrefix(strings.TrimSpace(string(out)), "v")
 }
 
+// maxFailureLines bounds how much of a failed build's output is reported. Build
+// tools print the errors first and a one-line summary last, so the tail carries
+// the cause; the summary alone ("could not compile `sidebar`", with no reason)
+// leaves the user nothing to act on.
+const maxFailureLines = 20
+
 func run(cmd *exec.Cmd) error {
 	out, err := cmd.CombinedOutput()
-	if err != nil {
-		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-		return fmt.Errorf("build failed: %s", lines[len(lines)-1])
+	if err == nil {
+		return nil
 	}
-	return nil
+	if detail := lastLines(string(out), maxFailureLines); detail != "" {
+		return fmt.Errorf("build failed:\n%s", detail)
+	}
+	return fmt.Errorf("build failed: %w", err)
+}
+
+// lastLines keeps at most n trailing lines of a build log.
+func lastLines(out string, n int) string {
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
 }
 
 func need(bin, advice string) error {

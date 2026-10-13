@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -124,6 +125,33 @@ func TestAtomicInstallLeavesNoStagedFileBehind(t *testing.T) {
 	staged, _ := filepath.Glob(filepath.Join(dir, ".opus.new.*"))
 	if len(staged) != 0 {
 		t.Fatalf("staged file left behind: %v", staged)
+	}
+}
+
+// A failed build used to report only its last line, so a compile error arrived
+// as "could not compile `sidebar`" with no reason attached.
+func TestRunKeepsTheCompilerErrorsAndTheSummary(t *testing.T) {
+	cmd := exec.Command("sh", "-c",
+		"echo 'error[E0425]: cannot find value `x`'; echo 'error: could not compile `sidebar`'; exit 1")
+
+	err := run(cmd)
+	if err == nil {
+		t.Fatal("a failing build must return an error")
+	}
+	if !strings.Contains(err.Error(), "E0425") {
+		t.Fatalf("the compiler error must survive, got %q", err.Error())
+	}
+	if !strings.Contains(err.Error(), "could not compile `sidebar`") {
+		t.Fatalf("the summary must stay too, got %q", err.Error())
+	}
+}
+
+func TestLastLinesKeepsTheTailOfABuildLog(t *testing.T) {
+	if got := lastLines("one\ntwo\nthree\nfour\n", 2); got != "three\nfour" {
+		t.Fatalf("expected the last two lines, got %q", got)
+	}
+	if got := lastLines("", 5); got != "" {
+		t.Fatalf("an empty log must stay empty, got %q", got)
 	}
 }
 
