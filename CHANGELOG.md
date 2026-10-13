@@ -10,6 +10,15 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.17.1] — 2026-10-13
+
+### Fixed
+
+- A failed source build reports the toolchain's own errors instead of only its
+  last line. `cargo` ends with `error: could not compile \`sidebar\`` and nothing
+  else, which hid the actual cause; the installer now keeps the last 20 lines of
+  the build log.
+
 ## [0.17.0] — 2026-10-13
 
 ### Added
