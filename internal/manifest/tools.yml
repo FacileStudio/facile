@@ -628,3 +628,21 @@ tools:
         Gare orchestrates rootless Podman and Kubernetes workloads via systemd user
         units and Caddy ingress. It runs locally without an external suite server account.
 
+  - name: widgets
+    summary: "Wayland desktop widgets: statusbar, sidebar and launcher"
+    repo: saravenpi/widgets
+    branch: main
+    bin: statusbar
+    bins:
+      - statusbar
+      - sidebar
+      - launcher
+    build: rust
+    srcSubdir: .
+    auth:
+      kind: none
+      note: >-
+        The statusbar is a singleton and claims a PID file in $XDG_RUNTIME_DIR so a
+        compositor reload never stacks two bars. Do not run mako alongside the sidebar:
+        both claim org.freedesktop.Notifications and the second one loses.
+
