@@ -8,7 +8,13 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While on
 Entries before v0.6.0 were reconstructed from git history on 2026-08-24, so they
 record what shipped rather than what was written down at the time.
 
-## [Unreleased]
+## [0.17.2] — 2026-10-14
+
+### Fixed
+
+- `facile install` now names the tool being installed (`widgets`) instead of
+  the primary binary's version line (`statusbar 0.6.5`), so multi-binary tools
+  read correctly in the install output.
 
 ## [0.17.1] — 2026-10-13
 

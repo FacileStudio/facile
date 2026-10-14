@@ -101,7 +101,7 @@ func installAll(c *cobra.Command, tools []manifest.Tool) error {
 			failed = append(failed, tool.Name)
 			continue
 		}
-		ui.Success("%s installed to %s/%s", reported, store.Tilde(dir), strings.Join(tool.BinList(), " "))
+		ui.Success("%s %s installed to %s/%s", tool.Name, reported, store.Tilde(dir), strings.Join(tool.BinList(), " "))
 	}
 
 	reportPath(dir)
