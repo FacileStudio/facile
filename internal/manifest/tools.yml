@@ -646,3 +646,19 @@ tools:
         compositor reload never stacks two bars. Do not run mako alongside the sidebar:
         both claim org.freedesktop.Notifications and the second one loses.
 
+  - name: chat
+    summary: Terminal XMPP chat client
+    repo: FacileStudio/Chat
+    branch: main
+    bin: chat
+    build: go
+    srcSubdir: .
+    asset: Chat
+    goVersionVar: github.com/FacileStudio/Chat/cmd.version
+    auth:
+      kind: none
+      note: >-
+        Chat is an interactive terminal XMPP client built with Bubble Tea.
+        It connects directly to any XMPP server via STARTTLS on port 5222;
+        config lives in ~/.config/chat/config.yml or flags/env vars.
+
