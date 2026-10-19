@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"context"
 	"os"
 
+	"charm.land/fang/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/FacileStudio/facile/internal/manifest"
@@ -15,12 +17,11 @@ import (
 // magic init(), so the command tree is visible in one place.
 func buildCommand(v string) *cobra.Command {
 	root := &cobra.Command{
-		Use:           "facile",
-		Short:         "Install and manage the Facile Studio tools",
-		Long:          "One command to install, update and sign in to the Facile Studio suite.",
-		Version:       v,
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		Use:               "facile",
+		Short:             "Install and manage the Facile Studio tools",
+		Long:              "One command to install, update and sign in to the Facile Studio suite.",
+		Version:           v,
+		DisableAutoGenTag: true,
 		PersistentPreRun: func(c *cobra.Command, _ []string) {
 			if on, _ := c.Flags().GetBool("no-color"); on {
 				ui.SetColor(false)
@@ -40,11 +41,12 @@ func buildCommand(v string) *cobra.Command {
 	return root
 }
 
-// Execute runs the CLI and maps a returned error onto the suite's exit codes.
+// Execute runs the CLI through fang, which supplies the styled help and
+// errors, the completion and man commands, and renders the given version.
+// Fang already prints a styled error, so the wrapper only forwards the exit code.
 func Execute(v string) {
 	root := buildCommand(v)
-	if err := root.Execute(); err != nil {
-		ui.Error("%s", err)
+	if err := fang.Execute(context.Background(), root, fang.WithVersion(v)); err != nil {
 		os.Exit(1)
 	}
 }
