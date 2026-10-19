@@ -8,6 +8,27 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While on
 Entries before v0.6.0 were reconstructed from git history on 2026-08-24, so they
 record what shipped rather than what was written down at the time.
 
+## [0.19.0] — 2026-10-19
+
+### Added
+
+- A hidden `man` command generates the manpage via fang, and a `completion`
+  command generates shell completions.
+
+### Changed
+
+- The CLI now renders help pages and errors through charmbracelet fang, the
+  same styled output as the rest of the suite's CLIs. `--version` still prints
+  the plain `facile {version}` line; `--no-color` still controls the installer's
+  own output.
+- A chat tool joins the embedded catalog.
+
+## [0.18.0] — 2026-10-14
+
+### Added
+
+- Multi-binary `widgets` tool in the embedded catalog.
+
 ## [0.17.2] — 2026-10-14
 
 ### Fixed
