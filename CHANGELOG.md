@@ -10,6 +10,8 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.20.0] — 2026-10-25
+
 ### Added
 
 - `facile add` alias for `facile install`, and `facile del` and `facile rm` aliases for `facile uninstall`.
