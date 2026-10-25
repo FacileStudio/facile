@@ -19,15 +19,16 @@ import (
 // argument list that held nothing else must not fall back to "every installed
 // tool" the way a bare `facile update` does.
 func splitSelf(c *cobra.Command, args []string) (self bool, rest []string, named bool) {
-	self = len(args) == 0 || updateFlag(c)
-	for _, arg := range args {
+	names := splitNames(args)
+	self = len(names) == 0 || updateFlag(c)
+	for _, arg := range names {
 		if strings.EqualFold(arg, selfTool().Name) {
 			self = true
 			continue
 		}
 		rest = append(rest, arg)
 	}
-	return self, rest, len(args) > 0
+	return self, rest, len(names) > 0
 }
 
 func updateFlag(c *cobra.Command) bool {

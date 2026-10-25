@@ -26,10 +26,10 @@ facile install
 ## Commands
 
 ```
-facile install [tool...]   Install tools, or open a picker with no arguments
+facile install [tool...]   Install tools, or open a picker with no arguments (aliases: add)
 facile list                Show the catalog, what is installed, and what is outdated
 facile update [tool...]    Update installed tools to their latest release
-facile uninstall <tool>    Remove a tool's binary
+facile uninstall <tool...> Remove tools' binaries (aliases: remove, rm, del)
 facile doctor              Check PATH, shadowed binaries and interrupted installs
 facile login [tool...]     Sign in to every installed tool that has an account
 facile logout [tool...]    Forget a stored credential, keep the server URL

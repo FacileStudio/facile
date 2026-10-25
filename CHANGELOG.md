@@ -8,6 +8,13 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While on
 Entries before v0.6.0 were reconstructed from git history on 2026-08-24, so they
 record what shipped rather than what was written down at the time.
 
+## [Unreleased]
+
+### Added
+
+- `facile add` alias for `facile install`, and `facile del` and `facile rm` aliases for `facile uninstall`.
+- Multi-package arguments: `install`, `uninstall`, `update`, `login`, and `logout` now accept comma-separated package lists and deduplicate repeated names.
+
 ## [0.19.0] — 2026-10-19
 
 ### Added

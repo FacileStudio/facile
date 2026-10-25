@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"os"
+	"strings"
 
 	"charm.land/fang/v2"
 	"github.com/spf13/cobra"
@@ -82,6 +83,18 @@ func catalog() (*manifest.Manifest, error) {
 	return manifest.Load(store.CatalogPath())
 }
 
+// splitNames expands comma-separated and whitespace-delimited tool names.
+func splitNames(names []string) []string {
+	var out []string
+	for _, name := range names {
+		parts := strings.FieldsFunc(name, func(r rune) bool {
+			return r == ',' || r == ' ' || r == '\t'
+		})
+		out = append(out, parts...)
+	}
+	return out
+}
+
 // resolve turns command-line names into catalog entries, rejecting unknown ones
 // before any work starts rather than half way through a batch.
 func resolve(names []string) ([]manifest.Tool, error) {
@@ -89,8 +102,14 @@ func resolve(names []string) ([]manifest.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	tools := make([]manifest.Tool, 0, len(names))
-	for _, name := range names {
+	var tools []manifest.Tool
+	seen := make(map[string]bool)
+	for _, name := range splitNames(names) {
+		key := strings.ToLower(name)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
 		tool, ok := m.Get(name)
 		if !ok {
 			return nil, unknownTool(name)

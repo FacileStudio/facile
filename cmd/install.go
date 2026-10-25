@@ -18,10 +18,12 @@ import (
 // NewInstallCommand builds the install command and its flags.
 func NewInstallCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "install [tool...]",
-		Short: "Install Facile tools",
+		Use:     "install [tool...]",
+		Aliases: []string{"add"},
+		Short:   "Install Facile tools",
 		Long: "Install one or more tools from the Facile Studio catalog.\n\n" +
-			"With no arguments it opens a picker. Pass --all to take everything.",
+			"With no arguments it opens a picker. Pass --all to take everything.\n" +
+			"Aliases: facile add",
 		RunE: func(c *cobra.Command, args []string) error {
 			tools, err := chooseTools(c, args)
 			if err != nil {

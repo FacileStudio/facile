@@ -14,10 +14,11 @@ import (
 func NewUninstallCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:     "uninstall <tool...>",
-		Aliases: []string{"remove"},
+		Aliases: []string{"remove", "rm", "del"},
 		Short:   "Remove installed Facile tools",
 		Long: "Remove the binaries of one or more tools.\n\n" +
-			"Configuration and stored credentials are left alone; use `facile logout` for those.",
+			"Configuration and stored credentials are left alone; use `facile logout` for those.\n" +
+			"Aliases: facile remove, facile rm, facile del",
 		Args: cobra.MinimumNArgs(1),
 		RunE: runUninstall,
 	}
@@ -27,6 +28,9 @@ func runUninstall(c *cobra.Command, args []string) error {
 	tools, err := resolve(args)
 	if err != nil {
 		return err
+	}
+	if len(tools) == 0 {
+		return fmt.Errorf("no tool named")
 	}
 	dir := binDir(c)
 	removed := 0
