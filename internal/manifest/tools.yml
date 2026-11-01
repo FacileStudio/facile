@@ -453,11 +453,11 @@ tools:
 
   - name: bulle
     summary: Terminal coding agent
-    repo: FacileStudio/bulle
+    repo: FacileStudio/Bulle
     branch: main
     bin: bulle
     build: go
-    srcSubdir: .
+    srcSubdir: apps/cli
     asset: bulle
     goVersionVar: main.version
     auth:
