@@ -41,7 +41,7 @@ tools:
     skill: opus
     auth:
       kind: token
-      defaultServerUrl: http://localhost:1337
+      defaultServerUrl: https://opus.facile.studio
       tokenPath: /dashboard/settings/account/developer
       transport: bearer
       store:
@@ -67,6 +67,7 @@ tools:
     skill: sablier
     auth:
       kind: oidc-device
+      defaultServerUrl: https://sablier.facile.studio
       apiSuffix: /api
       discoveryPath: /auth/config
       transport: bearer
@@ -104,6 +105,7 @@ tools:
     skill: nuage
     auth:
       kind: oidc-device
+      defaultServerUrl: https://nuage.facile.studio
       apiSuffix: /api
       discoveryPath: /auth/config
       tokenPath: /settings/api
@@ -219,7 +221,7 @@ tools:
     skill: antenne
     auth:
       kind: password
-      defaultServerUrl: http://localhost:9090
+      defaultServerUrl: https://antenne.facile.studio
       discoveryPath: /api/session/public
       transport: cookie
       cookieName: antenne_session
@@ -462,12 +464,12 @@ tools:
     goVersionVar: main.version
     auth:
       kind: none
-      envToken: ANTHROPIC_API_KEY
       note: >-
-        Bulle is a client of the model APIs, not of a suite server, so there
-        is no suite login to drive. It reads ANTHROPIC_API_KEY for its default
-        backend and OPENROUTER_API_KEY for -backend openrouter; settings live
-        in ~/.bulle.yml, which facile never writes.
+        Bulle signs in through its own `bulle login`, which opens the browser
+        against https://bulle.facile.studio and stores a token the CLI sends
+        model calls through. The provider, models and keys live on that server,
+        so there is no suite login for facile to drive and settings live in
+        ~/.config/bulle/config.yml, which facile never writes.
 
   - name: ardoise
     summary: Invoice and contract PDFs
@@ -528,6 +530,7 @@ tools:
     skill: agenda
     auth:
       kind: oidc-device
+      defaultServerUrl: https://agenda.facile.studio
       discoveryPath: /auth/config
       transport: bearer
       envToken: AGENDA_TOKEN
