@@ -10,6 +10,13 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-11-03
+
+### Fixed
+
+- fix(manifest): every suite tool defaults to its https://<app>.facile.studio server; Opus and Antenne no longer default to localhost, and Sablier, Nuage and Agenda gain a default
+- fix(manifest): the Bulle entry describes its server login instead of the old standalone mode
+
 ## [0.20.0] — 2026-10-25
 
 ### Added
