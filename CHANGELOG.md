@@ -10,6 +10,12 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+### Fixed
+
+- fix(installer): a 5xx from GitHub's release download URL is retried, then the asset is fetched through the GitHub API, instead of falling back to a source build
+- fix(manifest): bulle builds from apps/cli, where its Go module now lives
+- fix(manifest): boite and filet stamp their real version variable, so a source build no longer reports a stale version
+
 ## [0.20.1] - 2026-11-03
 
 ### Fixed

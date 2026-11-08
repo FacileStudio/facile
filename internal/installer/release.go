@@ -5,6 +5,8 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,8 +21,15 @@ import (
 )
 
 const (
-	downloadLimit  = 256 << 20
-	requestTimeout = 60 * time.Second
+	downloadLimit    = 256 << 20
+	requestTimeout   = 60 * time.Second
+	downloadAttempts = 3
+)
+
+var (
+	githubBase = "https://github.com"
+	apiBase    = "https://api.github.com"
+	retryDelay = time.Second
 )
 
 // integrityError marks a release artifact that downloaded but did not verify.
@@ -60,14 +69,13 @@ func fromRelease(tool manifest.Tool, version, work string) ([]string, error) {
 	}
 	ver := strings.TrimPrefix(tag, "v")
 	archive := fmt.Sprintf("%s_%s_%s_%s.tar.gz", tool.Asset, ver, runtime.GOOS, runtime.GOARCH)
-	base := fmt.Sprintf("https://github.com/%s/releases/download/%s", tool.Repo, tag)
 
 	ui.Step("Downloading %s %s for %s/%s", tool.Bin, ver, runtime.GOOS, runtime.GOARCH)
-	blob, err := get(base + "/" + archive)
+	blob, err := releaseAsset(tool.Repo, tag, archive)
 	if err != nil {
 		return nil, err
 	}
-	sums, err := get(base + "/checksums.txt")
+	sums, err := releaseAsset(tool.Repo, tag, "checksums.txt")
 	if err != nil {
 		return nil, err
 	}
@@ -145,15 +153,79 @@ func writeFrom(r io.Reader, dest string) error {
 	return err
 }
 
-func get(url string) ([]byte, error) {
+// releaseAsset downloads one file of a release. GitHub's public download URL
+// sometimes answers 5xx for an asset that exists, while the API serves the same
+// bytes, so a server error is retried and then fetched through the API. The
+// bytes are verified against checksums.txt either way.
+func releaseAsset(repo, tag, name string) ([]byte, error) {
+	url := fmt.Sprintf("%s/%s/releases/download/%s/%s", githubBase, repo, tag, name)
+	var err error
+	for attempt := range downloadAttempts {
+		var blob []byte
+		if blob, err = get(url, nil); err == nil {
+			return blob, nil
+		}
+		var status statusError
+		if !errors.As(err, &status) || status.code < 500 {
+			return nil, err
+		}
+		time.Sleep(retryDelay * time.Duration(attempt+1))
+	}
+	blob, apiErr := apiAsset(repo, tag, name)
+	if apiErr != nil {
+		return nil, fmt.Errorf("%w (API fallback: %v)", err, apiErr)
+	}
+	return blob, nil
+}
+
+func apiAsset(repo, tag, name string) ([]byte, error) {
+	meta, err := get(fmt.Sprintf("%s/repos/%s/releases/tags/%s", apiBase, repo, tag),
+		map[string]string{"Accept": "application/vnd.github+json"})
+	if err != nil {
+		return nil, err
+	}
+	var release struct {
+		Assets []struct {
+			ID   int64  `json:"id"`
+			Name string `json:"name"`
+		} `json:"assets"`
+	}
+	if err := json.Unmarshal(meta, &release); err != nil {
+		return nil, fmt.Errorf("cannot read the release of %s: %w", repo, err)
+	}
+	for _, asset := range release.Assets {
+		if asset.Name == name {
+			return get(fmt.Sprintf("%s/repos/%s/releases/assets/%d", apiBase, repo, asset.ID),
+				map[string]string{"Accept": "application/octet-stream"})
+		}
+	}
+	return nil, fmt.Errorf("%s is not an asset of %s %s", name, repo, tag)
+}
+
+type statusError struct {
+	name   string
+	code   int
+	status string
+}
+
+func (e statusError) Error() string { return fmt.Sprintf("%s returned %s", e.name, e.status) }
+
+func get(url string, headers map[string]string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
 	client := &http.Client{Timeout: requestTimeout}
-	resp, err := client.Get(url)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s returned %s", filepath.Base(url), resp.Status)
+		return nil, statusError{name: filepath.Base(url), code: resp.StatusCode, status: resp.Status}
 	}
 	return io.ReadAll(io.LimitReader(resp.Body, downloadLimit))
 }

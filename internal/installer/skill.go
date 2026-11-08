@@ -64,7 +64,7 @@ func skillBody(tool manifest.Tool, work string) ([]byte, error) {
 		return body, nil
 	}
 	return get(fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/integrations/SKILL.md",
-		tool.Repo, tool.Branch))
+		tool.Repo, tool.Branch), nil)
 }
 
 // injectBlock replaces the tool's marked section in a shared agent file,

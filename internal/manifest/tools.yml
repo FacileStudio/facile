@@ -459,7 +459,7 @@ tools:
     branch: main
     bin: bulle
     build: go
-    srcSubdir: .
+    srcSubdir: apps/cli
     asset: bulle
     goVersionVar: main.version
     auth:
@@ -510,7 +510,7 @@ tools:
     build: go
     srcSubdir: .
     asset: filet
-    goVersionVar: github.com/FacileStudio/filet/cmd.version
+    goVersionVar: main.version
     skill: filet
     auth:
       kind: none
@@ -566,7 +566,7 @@ tools:
     build: go
     srcSubdir: .
     asset: boite
-    goVersionVar: github.com/FacileStudio/boite/cmd.Version
+    goVersionVar: github.com/FacileStudio/boite/cmd.version
     requires:
       - qemu-system-x86_64
     auth:
