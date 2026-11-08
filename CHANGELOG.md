@@ -10,6 +10,8 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.20.4] - 2026-11-08
+
 ### Fixed
 
 - fix(cmd): `facile update` keeps an installed tool when its latest tag cannot be read, instead of rebuilding it from source
