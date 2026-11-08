@@ -21,14 +21,15 @@ const facileRepo = "FacileStudio/facile"
 // No skill key, so nothing is registered with the agents on this machine.
 func selfTool() manifest.Tool {
 	return manifest.Tool{
-		Name:      "facile",
-		Summary:   "The suite installer",
-		Repo:      facileRepo,
-		Branch:    "main",
-		Bin:       "facile",
-		Build:     "go",
-		SrcSubdir: ".",
-		Asset:     "facile",
+		Name:         "facile",
+		Summary:      "The suite installer",
+		Repo:         facileRepo,
+		Branch:       "main",
+		Bin:          "facile",
+		Build:        "go",
+		SrcSubdir:    ".",
+		Asset:        "facile",
+		GoVersionVar: "main.version",
 	}
 }
 
