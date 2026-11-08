@@ -11,9 +11,11 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/FacileStudio/facile/internal/manifest"
@@ -24,6 +26,7 @@ const (
 	downloadLimit    = 256 << 20
 	requestTimeout   = 60 * time.Second
 	downloadAttempts = 3
+	latestTimeout    = 15 * time.Second
 )
 
 var (
@@ -40,22 +43,62 @@ type integrityError struct{ msg string }
 func (e integrityError) Error() string { return e.msg }
 
 // LatestTag resolves a repository's latest release tag by following the
-// /releases/latest redirect. No GitHub API, so no rate limit and no token.
-// A repository facile cannot read looks exactly like one with no release, so
-// the error names both causes rather than guessing between them.
+// /releases/latest redirect, with no token and no API rate limit. GitHub's web
+// front sometimes stalls or answers 5xx, so the redirect is tried twice and the
+// API answers last. A repository facile cannot read looks exactly like one with
+// no release, so the error names both causes rather than guessing between them.
 func LatestTag(repo string) (string, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Head("https://github.com/" + repo + "/releases/latest")
+	var err error
+	for range 2 {
+		var tag string
+		if tag, err = redirectTag(repo); err == nil {
+			return tag, nil
+		}
+		if _, missing := err.(noReleaseError); missing {
+			return "", err
+		}
+	}
+	tag, apiErr := apiLatestTag(repo)
+	if apiErr != nil {
+		return "", fmt.Errorf("%w (API fallback: %v)", err, apiErr)
+	}
+	return tag, nil
+}
+
+type noReleaseError struct{ msg string }
+
+func (e noReleaseError) Error() string { return e.msg }
+
+func redirectTag(repo string) (string, error) {
+	client := &http.Client{Timeout: latestTimeout}
+	resp, err := client.Head(githubBase + "/" + repo + "/releases/latest")
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-	final := resp.Request.URL.Path
-	_, tag, found := strings.Cut(final, "/releases/tag/")
+	if resp.StatusCode >= 500 {
+		return "", statusError{name: repo + " releases/latest", code: resp.StatusCode, status: resp.Status}
+	}
+	_, tag, found := strings.Cut(resp.Request.URL.Path, "/releases/tag/")
 	if !found || tag == "" {
-		return "", fmt.Errorf("cannot read a release tag for %s (%s) — check that the repository is public and has a release published", repo, resp.Status)
+		return "", noReleaseError{fmt.Sprintf("cannot read a release tag for %s (%s) — check that the repository is public and has a release published", repo, resp.Status)}
 	}
 	return tag, nil
+}
+
+func apiLatestTag(repo string) (string, error) {
+	body, err := get(fmt.Sprintf("%s/repos/%s/releases/latest", apiBase, repo),
+		apiHeaders("application/vnd.github+json"))
+	if err != nil {
+		return "", err
+	}
+	var release struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.Unmarshal(body, &release); err != nil || release.TagName == "" {
+		return "", fmt.Errorf("cannot read the latest release of %s", repo)
+	}
+	return release.TagName, nil
 }
 
 func fromRelease(tool manifest.Tool, version, work string) ([]string, error) {
@@ -180,7 +223,7 @@ func releaseAsset(repo, tag, name string) ([]byte, error) {
 
 func apiAsset(repo, tag, name string) ([]byte, error) {
 	meta, err := get(fmt.Sprintf("%s/repos/%s/releases/tags/%s", apiBase, repo, tag),
-		map[string]string{"Accept": "application/vnd.github+json"})
+		apiHeaders("application/vnd.github+json"))
 	if err != nil {
 		return nil, err
 	}
@@ -196,11 +239,39 @@ func apiAsset(repo, tag, name string) ([]byte, error) {
 	for _, asset := range release.Assets {
 		if asset.Name == name {
 			return get(fmt.Sprintf("%s/repos/%s/releases/assets/%d", apiBase, repo, asset.ID),
-				map[string]string{"Accept": "application/octet-stream"})
+				apiHeaders("application/octet-stream"))
 		}
 	}
 	return nil, fmt.Errorf("%s is not an asset of %s %s", name, repo, tag)
 }
+
+// apiHeaders authenticates API calls when a GitHub token is at hand. GitHub
+// throttles and times out anonymous clients first, so a signed-in gh keeps the
+// fallback working. The token goes to api.github.com only, never to a download
+// host.
+func apiHeaders(accept string) map[string]string {
+	headers := map[string]string{"Accept": accept}
+	if token := githubToken(); token != "" {
+		headers["Authorization"] = "Bearer " + token
+	}
+	return headers
+}
+
+var githubToken = sync.OnceValue(func() string {
+	for _, name := range []string{"GH_TOKEN", "GITHUB_TOKEN"} {
+		if token := strings.TrimSpace(os.Getenv(name)); token != "" {
+			return token
+		}
+	}
+	if _, err := exec.LookPath("gh"); err != nil {
+		return ""
+	}
+	out, err := exec.Command("gh", "auth", "token").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+})
 
 type statusError struct {
 	name   string

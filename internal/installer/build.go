@@ -15,20 +15,21 @@ import (
 func buildFor(tool manifest.Tool, src, checkout, out string) ([]string, error) {
 	switch tool.Build {
 	case "rust":
-		return buildRust(tool, src, out)
+		return buildRust(tool, src, checkout, out)
 	case "go":
 		return buildGo(tool, src, checkout, out)
 	default:
-		return buildBun(tool, src, out)
+		return buildBun(tool, src, checkout, out)
 	}
 }
 
 // buildRust compiles the workspace or package and collects every declared
 // binary from the shared target directory, so one repository installs all
 // of its widgets in one pass.
-func buildRust(tool manifest.Tool, src, out string) ([]string, error) {
+func buildRust(tool manifest.Tool, src, checkout, out string) ([]string, error) {
 	cmd := exec.Command("cargo", "build", "--release", "--quiet")
 	cmd.Dir = src
+	cmd.Env = ignoreRepoMise(checkout)
 	if err := run(cmd); err != nil {
 		return nil, err
 	}
@@ -55,17 +56,20 @@ func buildGo(tool manifest.Tool, src, checkout, out string) ([]string, error) {
 	dest := filepath.Join(out, bins[0])
 	cmd := exec.Command("go", "build", "-trimpath", "-ldflags", ldflags, "-o", dest, ".")
 	cmd.Dir = src
+	cmd.Env = ignoreRepoMise(checkout)
 	return []string{dest}, run(cmd)
 }
 
-func buildBun(tool manifest.Tool, src, out string) ([]string, error) {
+func buildBun(tool manifest.Tool, src, checkout, out string) ([]string, error) {
 	install := exec.Command("bun", "install", "--frozen-lockfile", "--silent")
 	install.Dir = src
+	install.Env = ignoreRepoMise(checkout)
 	if err := run(install); err != nil {
 		return nil, err
 	}
 	compile := exec.Command("bun", "run", "--silent", "build")
 	compile.Dir = src
+	compile.Env = ignoreRepoMise(checkout)
 	if err := run(compile); err != nil {
 		return nil, err
 	}
@@ -123,4 +127,16 @@ func need(bin, advice string) error {
 		return fmt.Errorf("%s not found — %s", bin, advice)
 	}
 	return nil
+}
+
+// ignoreRepoMise keeps mise shims from reading the cloned repository's own
+// mise.toml. An untrusted config makes every shimmed toolchain abort, and
+// trusting a freshly cloned file would run its hooks, so the build uses the
+// toolchain the person already installed instead.
+func ignoreRepoMise(dir string) []string {
+	paths := dir
+	if existing := os.Getenv("MISE_IGNORED_CONFIG_PATHS"); existing != "" {
+		paths = existing + string(os.PathListSeparator) + dir
+	}
+	return append(os.Environ(), "MISE_IGNORED_CONFIG_PATHS="+paths)
 }

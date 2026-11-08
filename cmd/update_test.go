@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -180,4 +181,25 @@ func TestUpToDateWithVersionCmd(t *testing.T) {
 			t.Fatal("fallback heuristic should match 'opus 1.2.3' against tag v1.2.3")
 		}
 	})
+}
+
+func TestStaleKeepsAnInstalledToolWhoseLatestTagIsUnreadable(t *testing.T) {
+	dir := t.TempDir()
+	stubBinDir(t, dir)
+	stubLatestTag(t, func(string) (string, error) {
+		return "", errors.New("context deadline exceeded")
+	})
+	stubBinary(t, dir, "opus", "opus 0.9.0")
+
+	tools := []manifest.Tool{
+		{Name: "opus", Bin: "opus", Asset: "opus", Repo: "FacileStudio/opus-cli"},
+		{Name: "nuage", Bin: "nuage", Asset: "nuage", Repo: "FacileStudio/nuage-cli"},
+	}
+	var got []string
+	for _, tool := range stale(NewUpdateCommand(), tools) {
+		got = append(got, tool.Name)
+	}
+	if !slices.Equal(got, []string{"nuage"}) {
+		t.Fatalf("an installed tool must be kept when its tag is unreadable, and a missing one installed; got %v", got)
+	}
 }

@@ -10,6 +10,12 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+### Fixed
+
+- fix(cmd): `facile update` keeps an installed tool when its latest tag cannot be read, instead of rebuilding it from source
+- fix(installer): the latest-tag lookup retries, then asks the GitHub API, authenticated with GH_TOKEN, GITHUB_TOKEN or `gh auth token` when available, because GitHub times out anonymous clients first
+- fix(installer): source builds ignore the cloned repository's mise.toml, so an untrusted config no longer aborts cargo, go or bun and its hooks never run
+
 ## [0.20.3] - 2026-11-08
 
 ### Fixed
