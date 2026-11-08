@@ -10,6 +10,8 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.20.3] - 2026-11-08
+
 ### Fixed
 
 - fix(cmd): a source build of facile itself stamps its version, so `facile update facile` no longer leaves a binary that reports "dev" and refuses later self-updates
