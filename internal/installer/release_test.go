@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 )
 
@@ -57,7 +58,49 @@ func TestReleaseAssetDoesNotRetryAMissingAsset(t *testing.T) {
 
 func withBases(t *testing.T, url string) {
 	t.Helper()
-	oldGitHub, oldAPI, oldDelay := githubBase, apiBase, retryDelay
+	oldGitHub, oldAPI, oldDelay, oldToken := githubBase, apiBase, retryDelay, githubToken
 	githubBase, apiBase, retryDelay = url, url, 0
-	t.Cleanup(func() { githubBase, apiBase, retryDelay = oldGitHub, oldAPI, oldDelay })
+	githubToken = func() string { return "" }
+	t.Cleanup(func() { githubBase, apiBase, retryDelay, githubToken = oldGitHub, oldAPI, oldDelay, oldToken })
+}
+
+func TestLatestTagFallsBackToTheAPI(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/o/tool/releases/latest":
+			w.WriteHeader(http.StatusGatewayTimeout)
+		case "/repos/o/tool/releases/latest":
+			fmt.Fprint(w, `{"tag_name":"v2.0.0"}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	withBases(t, server.URL)
+
+	if tag, err := LatestTag("o/tool"); err != nil || tag != "v2.0.0" {
+		t.Fatalf("want v2.0.0 from the API, got %q, %v", tag, err)
+	}
+}
+
+func TestIgnoreRepoMiseAddsTheCheckout(t *testing.T) {
+	t.Setenv("MISE_IGNORED_CONFIG_PATHS", "/already")
+	env := ignoreRepoMise("/work/src")
+	want := "MISE_IGNORED_CONFIG_PATHS=/already" + string(os.PathListSeparator) + "/work/src"
+	if env[len(env)-1] != want {
+		t.Fatalf("want %q last, got %q", want, env[len(env)-1])
+	}
+}
+
+func TestAPIHeadersSendTheTokenOnlyWhenPresent(t *testing.T) {
+	old := githubToken
+	t.Cleanup(func() { githubToken = old })
+	githubToken = func() string { return "" }
+	if _, ok := apiHeaders("x")["Authorization"]; ok {
+		t.Fatal("no token, no Authorization header")
+	}
+	githubToken = func() string { return "t0k" }
+	if apiHeaders("x")["Authorization"] != "Bearer t0k" {
+		t.Fatal("a token must be sent as a bearer")
+	}
 }

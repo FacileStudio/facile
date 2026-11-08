@@ -65,39 +65,54 @@ var latestTagFn = installer.LatestTag
 
 func stale(c *cobra.Command, tools []manifest.Tool) []manifest.Tool {
 	dir := binDir(c)
-	current := checkAll(tools, dir)
+	checks := checkAll(tools, dir)
 
 	keep := make([]manifest.Tool, 0, len(tools))
 	for i, tool := range tools {
-		if current[i] != "" {
-			ui.Success("%s is up to date", current[i])
-			continue
+		switch {
+		case checks[i].err != nil:
+			ui.Warn("%s: cannot check for an update (%v), keeping %s", tool.Name, checks[i].err, checks[i].have)
+		case checks[i].current:
+			ui.Success("%s is up to date", checks[i].have)
+		default:
+			keep = append(keep, tool)
 		}
-		keep = append(keep, tool)
 	}
 	return keep
 }
 
-func checkAll(tools []manifest.Tool, dir string) []string {
-	current := make([]string, len(tools))
+type check struct {
+	have    string
+	current bool
+	err     error
+}
+
+func checkAll(tools []manifest.Tool, dir string) []check {
+	checks := make([]check, len(tools))
 	var wg sync.WaitGroup
 	for i, tool := range tools {
 		wg.Go(func() {
-			checkOne(tool, dir, i, current)
+			checks[i] = checkOne(tool, dir)
 		})
 	}
 	wg.Wait()
-	return current
+	return checks
 }
 
-// checkOne resolves one tool's installed version and its latest tag.
-// have comes from installer.Installed; when ok is false, upToDate is
-// never called, so have is never empty at that call site.
-func checkOne(tool manifest.Tool, dir string, i int, current []string) {
-	path := filepath.Join(dir, tool.Bin)
-	if have, ok := installer.Installed(dir, tool.Bin); ok && upToDate(have, path, tool) {
-		current[i] = have
+// checkOne compares an installed tool with its latest tag. A tool that is not
+// installed is always stale. An installed one whose latest tag cannot be read
+// is kept as it is: rebuilding it from source because GitHub was slow replaces
+// a working binary for no reason.
+func checkOne(tool manifest.Tool, dir string) check {
+	have, ok := installer.Installed(dir, tool.Bin)
+	if !ok {
+		return check{}
 	}
+	tag, err := latestTagFn(tool.Repo)
+	if err != nil {
+		return check{have: have, err: err}
+	}
+	return check{have: have, current: matchesTag(have, filepath.Join(dir, tool.Bin), tool, tag)}
 }
 
 func upToDate(have, path string, tool manifest.Tool) bool {
@@ -105,6 +120,10 @@ func upToDate(have, path string, tool manifest.Tool) bool {
 	if err != nil {
 		return false
 	}
+	return matchesTag(have, path, tool, tag)
+}
+
+func matchesTag(have, path string, tool manifest.Tool, tag string) bool {
 	expected := strings.TrimPrefix(tag, "v")
 
 	if have == "" {
