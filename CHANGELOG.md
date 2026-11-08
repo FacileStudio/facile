@@ -10,6 +10,8 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.20.2] - 2026-11-08
+
 ### Fixed
 
 - fix(installer): a 5xx from GitHub's release download URL is retried, then the asset is fetched through the GitHub API, instead of falling back to a source build
