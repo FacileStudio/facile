@@ -10,6 +10,10 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+### Removed
+
+- The `chat` tool leaves the catalog. Chat is retired; Prisme replaces it.
+
 ## [0.20.4] - 2026-11-08
 
 ### Fixed
