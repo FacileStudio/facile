@@ -243,4 +243,4 @@ there is one implementation and nothing left to drift.
 
 ## License
 
-MIT
+facile is released under the [MIT License](LICENSE).
