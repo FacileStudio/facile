@@ -10,6 +10,18 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-11-11
+
+### Security
+
+- build: Go 1.26.11 (`go` directive). It fixes GO-2026-6848 to GO-2026-6859 in the standard library and toolchain, which douane reported as unscored gaps and which failed the gate.
+- build(deps): `golang.org/x/text` v0.24.0 to v0.41.0 (GO-2026-5970, GO-2026-6629).
+
+### Fixed
+
+- fix(authflow): the login callback listener shuts down gracefully after the handler writes its page. It closed the connection as soon as the token arrived, so the browser could get a reset instead of "Signed in", and `TestAwaitCallback` failed about one run in four under `-race`.
+- style: gofmt on five files, which failed `filet gate`.
+
 ## [0.22.0] - 2026-11-11
 
 ### Added
