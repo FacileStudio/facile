@@ -1,6 +1,7 @@
 package authflow
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -107,7 +108,7 @@ func awaitCallback(listener net.Listener, flow *manifest.SSOFlow, state string) 
 	done := make(chan callbackOutcome, 1)
 	server := &http.Server{Handler: makeCallbackHandler(path, param, flow.RequireState, state, done)}
 	go server.Serve(listener)
-	defer server.Close()
+	defer shutdown(server)
 
 	ui.Step("Waiting for the browser to complete sign-in")
 	select {
@@ -115,6 +116,16 @@ func awaitCallback(listener net.Listener, flow *manifest.SSOFlow, state string) 
 		return result.value, result.err
 	case <-time.After(ssoTimeout):
 		return "", fmt.Errorf("timed out waiting for the browser — run `facile login` again")
+	}
+}
+
+// shutdown stops the callback listener once the handler has written its page,
+// so the browser receives the answer instead of a closed connection.
+func shutdown(server *http.Server) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if server.Shutdown(ctx) != nil {
+		server.Close()
 	}
 }
 
