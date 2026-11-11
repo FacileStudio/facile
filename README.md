@@ -140,6 +140,7 @@ signing back in does not mean retyping where your instance lives.
 | `bulle` | Terminal coding agent |
 | `ardoise` | Invoice and contract PDFs |
 | `douane` | Vulnerability sweep — scan, rank, sweep the fleet |
+| `encre` | Facile document format (validate and convert artifacts) |
 
 The catalog lives in [`internal/manifest/tools.yml`](internal/manifest/tools.yml).
 It is embedded at build time and refreshed from `main` at runtime, so a tenth

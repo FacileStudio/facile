@@ -10,6 +10,10 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+### Added
+
+- `encre`, the Facile document format CLI, joins the catalog: `facile install encre` takes the static Linux binary from encre's release (checksums verified) and builds the Rust workspace elsewhere. Mycelium and Bulle validate every artifact with it, so a machine without it records `mycelium artifact add` documents with a warning only.
+
 ## [0.21.0] - 2026-11-10
 
 ### Removed
