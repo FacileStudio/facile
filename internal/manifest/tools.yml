@@ -502,6 +502,21 @@ tools:
         feeds directly. There is no suite server to log into and no credential
         to store; its only network traffic is advisory lookups.
 
+  - name: encre
+    summary: Facile document format (validate and convert artifacts)
+    repo: FacileStudio/encre
+    branch: main
+    bin: encre
+    build: rust
+    srcSubdir: .
+    asset: encre
+    auth:
+      kind: none
+      note: >-
+        Offline: no server and no login. Mycelium and Bulle run it to validate
+        every artifact; without it, mycelium artifact add records the document
+        with a warning.
+
   - name: filet
     summary: Code-quality checker
     repo: FacileStudio/filet
