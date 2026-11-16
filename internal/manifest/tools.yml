@@ -646,6 +646,88 @@ tools:
         Gare orchestrates rootless Podman and Kubernetes workloads via systemd user
         units and Caddy ingress. It runs locally without an external suite server account.
 
+  - name: diapo
+    summary: Slides as one text file
+    repo: FacileStudio/Diapo
+    branch: main
+    bin: diapo
+    build: rust
+    srcSubdir: apps/cli
+    asset: diapo
+    auth:
+      kind: oidc-device
+      defaultServerUrl: https://diapo.facile.studio
+      apiSuffix: /api
+      discoveryPath: /auth/config
+      identityPath: /auth/me
+      transport: bearer
+      envToken: DIAPO_TOKEN
+      envUrl: DIAPO_SERVER_URL
+      oidcDevice:
+        issuer: https://sso.facile.studio
+        clientId: facile-cli
+        scopes: openid profile email
+        exchangePath: /auth/oidc/device/exchange
+      sso:
+        startPath: /auth/oidc
+        portParam: port
+        stateParam: cli_state
+        extraParams: flow=cli
+        callbackWith: code
+        callbackPath: /
+        exchangePath: /auth/oidc/exchange
+        requireState: true
+      store:
+        kind: file
+        path: ${xdgConfig}/diapo/config.yml
+        format: yaml
+        tokenField: token
+        urlField: server_url
+        mode: 0o600
+        dirMode: 0o700
+        preserve: true
+
+  - name: clap
+    summary: Video as one text file
+    repo: FacileStudio/Clap
+    branch: main
+    bin: clap
+    build: rust
+    srcSubdir: apps/cli
+    asset: clap
+    auth:
+      kind: oidc-device
+      defaultServerUrl: https://clap.facile.studio
+      apiSuffix: /api
+      discoveryPath: /auth/config
+      identityPath: /auth/me
+      transport: bearer
+      envToken: CLAP_TOKEN
+      envUrl: CLAP_SERVER_URL
+      oidcDevice:
+        issuer: https://sso.facile.studio
+        clientId: facile-cli
+        scopes: openid profile email
+        exchangePath: /auth/oidc/device/exchange
+      sso:
+        startPath: /auth/oidc
+        portParam: port
+        stateParam: cli_state
+        extraParams: flow=cli
+        callbackWith: code
+        callbackPath: /
+        exchangePath: /auth/oidc/exchange
+        requireState: true
+      store:
+        kind: file
+        path: ${xdgConfig}/clap/config.yml
+        format: yaml
+        tokenField: token
+        urlField: server_url
+        mode: 0o600
+        dirMode: 0o700
+        preserve: true
+
   - name: widgets
     summary: "Wayland desktop widgets: statusbar, sidebar and launcher"
     repo: saravenpi/widgets
