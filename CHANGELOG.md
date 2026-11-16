@@ -10,6 +10,12 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-11-16
+
+### Added
+
+- Diapo (`diapo`, slides as one text file) and Clap (`clap`, video as one text file) join the tool catalog, with their `oidc-device` sign-in and file stores transcribed from each repo's `docs/cli.md`.
+
 ## [0.22.1] - 2026-11-11
 
 ### Security
