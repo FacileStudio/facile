@@ -10,6 +10,8 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-17
+
 ### Changed
 
 - `facile install`, `update`, `uninstall` and `list` hand over to kit, the new Facile package manager. When `kit` is on your PATH, facile prints `facile <cmd> is now kit <newcmd>` on stderr and runs kit in its place: `install` becomes `kit add`, `uninstall` becomes `kit del`, `update` and `list` keep their names, and every flag passes through unchanged. Without kit, facile prints how to get it and runs the command itself as before. `facile update facile`, `login`, `logout` and `doctor` stay in facile.
