@@ -28,10 +28,12 @@ install.sh                  bootstrap for facile itself
 
 ## The catalog is the product
 
-`internal/manifest/tools.yml` is canonical and is embedded with `go:embed`. It is
-also refreshed at runtime from its raw URL on `main`, so adding a tool does not
-require anybody to reinstall facile. There is exactly one copy of this file — do
-not add a second at the repo root "for convenience".
+kit holds the canonical catalog now:
+`crates/kit-core/catalog/tools.yml` in FacileStudio/kit. facile refreshes it at
+runtime from kit's raw URL on `main` (`internal/manifest/cache.go`), so adding a
+tool does not require anybody to reinstall facile. `internal/manifest/tools.yml`
+is embedded with `go:embed` as the offline fallback only. Change the catalog in
+kit first; copy it here when you want the fallback to catch up.
 
 Its `auth:` block is **transcribed from each CLI's own credential read path**, not
 designed. A wrong service string or a missing `/api` suffix means facile writes a
