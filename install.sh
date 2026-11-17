@@ -1,13 +1,18 @@
 #!/bin/sh
 #
-# Bootstrap installer for facile, the Facile Studio suite installer.
+# Bootstrap installer for kit, the Facile package manager, and for facile,
+# which stays installed for `facile login` and `facile logout`.
+#
+# It downloads kit's own install.sh and runs it with every argument given here,
+# then installs facile as it always has. Old product shims fall back to this
+# URL, so it keeps working for them.
 #
 # Every statement sits inside a function and main() is the last line, so a
 # download truncated mid-flight executes nothing at all. This is the single
 # most important property of a `curl | sh` script and it is not negotiable.
 #
-# Once facile is on your PATH, it installs everything else:
-#   facile install
+# Once kit is on your PATH, it installs everything else:
+#   kit add
 
 set -eu
 # shellcheck disable=SC3040
@@ -15,6 +20,7 @@ set -o pipefail 2>/dev/null || true
 
 REPO="FacileStudio/facile"
 BIN="facile"
+KIT_INSTALLER="https://raw.githubusercontent.com/FacileStudio/kit/main/install.sh"
 
 # External repos can ship a facile.toml (or a [facile] block in mise.toml) at
 # their root to declare how facile should install them. Users can also define
@@ -53,20 +59,24 @@ tilde() {
 
 usage() {
   cat <<EOF
-Install facile, the Facile Studio suite installer.
+Install kit, the Facile package manager, then facile for sign-in.
+
+Every option is passed to kit's installer unchanged. facile reads
+--bin-dir, --source and --no-path too; --version applies to kit only.
 
 Usage:
   install.sh [options]
 
 Options:
   --bin-dir <dir>   Directory to install into (default: ~/.local/bin)
-  --version <tag>   Release tag to install (default: latest)
+  --version <tag>   Release tag of kit to install (default: latest)
   --source          Build from source, ignore published releases
   --no-path         Do not touch shell config files to put the bin dir on PATH
   -h, --help        Show this help
 
 Environment:
   FACILE_BIN_DIR    Same as --bin-dir
+  FACILE_VERSION    Release tag of facile to install (default: latest)
   FACILE_NO_PATH    Same as --no-path
   NO_COLOR          Disable colored output
 EOF
@@ -81,7 +91,7 @@ setup_colors
 
 parse_args() {
   BIN_DIR="${FACILE_BIN_DIR:-$HOME/.local/bin}"
-  VERSION=""
+  VERSION="${FACILE_VERSION:-}"
   FROM_SOURCE=0
   # Writing to shell config by default is what rustup, bun and uv do, and the
   # alternative — printing a line and hoping it gets read — is the failure this
@@ -94,12 +104,12 @@ parse_args() {
     case "$1" in
       --bin-dir) BIN_DIR="${2:?--bin-dir needs a value}"; shift 2 ;;
       --bin-dir=*) BIN_DIR="${1#*=}"; shift ;;
-      --version) VERSION="${2:?--version needs a value}"; shift 2 ;;
-      --version=*) VERSION="${1#*=}"; shift ;;
+      --version) shift; [ $# -eq 0 ] || shift ;;
+      --version=*) shift ;;
       --source) FROM_SOURCE=1; shift ;;
       --no-path) SETUP_PATH=0; shift ;;
       -h|--help) usage; exit 0 ;;
-      *) die "unknown option: $1 — this script installs facile itself; run 'facile install <tool>' for suite tools" ;;
+      *) shift ;;
     esac
   done
   BIN_DIR="${BIN_DIR%/}"
@@ -355,16 +365,39 @@ report() {
     warn "another $BIN comes first on your PATH: $shadow"
   fi
 
-  info "Run \`facile install\` to pick your tools"
+  info "Run \`kit add\` to pick your tools, and \`facile login\` to sign in"
+}
+
+# --- kit --------------------------------------------------------------------
+
+# install_kit saves kit's installer to a file before running it, so a download
+# cut off mid-flight runs nothing. A kit failure is a warning: facile still
+# installs, and `facile login` still works.
+install_kit() {
+  info "Installing kit"
+  if ! command -v curl >/dev/null 2>&1; then
+    warn "curl not found, skipping kit"
+    return 0
+  fi
+  if ! curl -fsSL -o "$WORK/kit-install.sh" "$KIT_INSTALLER" 2>/dev/null; then
+    warn "cannot download kit's installer from $KIT_INSTALLER"
+    return 0
+  fi
+  runner="sh"
+  if command -v bash >/dev/null 2>&1; then
+    runner="bash"
+  fi
+  "$runner" "$WORK/kit-install.sh" "$@" || warn "kit's installer failed, continuing with facile"
 }
 
 # --- main -------------------------------------------------------------------
 
 main() {
   parse_args "$@"
+  make_workdir
+  install_kit "$@"
   info "Installing facile"
   detect_platform
-  make_workdir
   prepare_bin_dir
   install_from_release || install_from_source
   report
