@@ -45,7 +45,9 @@ func buildCommand(v string) *cobra.Command {
 // Execute runs the CLI through fang, which supplies the styled help and
 // errors, the completion and man commands, and renders the given version.
 // Fang already prints a styled error, so the wrapper only forwards the exit code.
+// Package commands go to kit first when it is installed.
 func Execute(v string) {
+	forwardToKit(os.Args[1:], lookPathKit)
 	root := buildCommand(v)
 	if err := fang.Execute(context.Background(), root, fang.WithVersion(v)); err != nil {
 		os.Exit(1)
