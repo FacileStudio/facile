@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	remoteURL   = "https://raw.githubusercontent.com/FacileStudio/facile/main/internal/manifest/tools.yml"
+	remoteURL   = "https://raw.githubusercontent.com/FacileStudio/kit/main/crates/kit-core/catalog/tools.yml"
 	cacheMaxAge = 24 * time.Hour
 	fetchLimit  = 1 << 20
 )

@@ -142,9 +142,10 @@ signing back in does not mean retyping where your instance lives.
 | `douane` | Vulnerability sweep — scan, rank, sweep the fleet |
 | `encre` | Facile document format (validate and convert artifacts) |
 
-The catalog lives in [`internal/manifest/tools.yml`](internal/manifest/tools.yml).
-It is embedded at build time and refreshed from `main` at runtime, so a tenth
-tool never means reinstalling facile.
+The canonical catalog lives in [kit](https://github.com/FacileStudio/kit), at
+`crates/kit-core/catalog/tools.yml`. facile refreshes it from kit's `main` at
+runtime and keeps [`internal/manifest/tools.yml`](internal/manifest/tools.yml)
+embedded as the offline fallback.
 
 **Note**: `facile install bulle` installs the terminal coding agent, previously known as `nacelle`.
 

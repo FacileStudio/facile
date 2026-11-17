@@ -1,8 +1,8 @@
 # The Facile Studio tool catalog.
 #
-# `facile` embeds this file at build time and refreshes it from its raw URL on
-# main at runtime, so adding a tenth tool never requires anybody to reinstall
-# facile. This copy is canonical; there is no second one to keep in sync.
+# The canonical copy lives in FacileStudio/kit at
+# crates/kit-core/catalog/tools.yml. `facile` refreshes it from kit's main at
+# runtime and embeds this copy only as the offline fallback.
 #
 # The install fields mirror the config block of the per-repo install.sh by
 # design: the two must agree, and identical names make a mismatch visible.
