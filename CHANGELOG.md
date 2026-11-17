@@ -10,6 +10,12 @@ record what shipped rather than what was written down at the time.
 
 ## [Unreleased]
 
+### Changed
+
+- `facile install`, `update`, `uninstall` and `list` hand over to kit, the new Facile package manager. When `kit` is on your PATH, facile prints `facile <cmd> is now kit <newcmd>` on stderr and runs kit in its place: `install` becomes `kit add`, `uninstall` becomes `kit del`, `update` and `list` keep their names, and every flag passes through unchanged. Without kit, facile prints how to get it and runs the command itself as before. `facile update facile`, `login`, `logout` and `doctor` stay in facile.
+- The catalog refreshes from kit's `crates/kit-core/catalog/tools.yml`, which is canonical now. The embedded copy stays as the offline fallback.
+- `install.sh` installs kit first, by running kit's own `install.sh` with every argument it was given, then installs facile for `facile login`. Old product shims that fall back to this script get kit too. `--version` now applies to kit; set `FACILE_VERSION` to pin facile.
+
 ## [0.23.0] - 2026-11-16
 
 ### Added
